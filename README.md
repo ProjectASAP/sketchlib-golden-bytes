@@ -48,6 +48,7 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `kll_dynamic_i64_k200` | KLLDynamic i64, k=200 | `06 01` | `[0, 1, -1, 127, -32, 128, -33, 255, -128, 256, -129, 65535, -32768, 65536, -32769, 4294967295, -2147483648, 4294967296, -2147483649, i64::MAX, i64::MIN]` in that order, compaction seed 42 (not in metadata) |
 | `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
 | `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 2; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
+| `ddsketch_empty_a001` | DDSketch, α=0.01, empty | `05 00` | `metadata_version` 1; empty positive store at offset `0`; `sum=0.0, min=+inf, max=-inf` |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `k=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `k=3`; heap `{-1:7, -129:7, 4294967296:3}` |
 | `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `k=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
@@ -97,8 +98,9 @@ DDSketch never hashes, so its fixtures set the bucket stores, offsets, zero
 count and the `sum` / `min` / `max` scalars directly. The positive fixture's
 counts span positive fixint / uint8 / uint16 / uint32 / uint64 and its offset is
 an int8. The signed fixture is `metadata_version` 2, which adds the negative
-store and zero count; its offsets are a uint16 and an int16. α is a single
-metadata `f64`, so both use 0.01.
+store and zero count; its offsets are a uint16 and an int16. The empty fixture
+is a fresh sketch: no buckets and the `0.0` / `+inf` / `-inf` scalars. α is a
+single metadata `f64`, so all three use 0.01.
 
 The CMSHeap fixtures set the matrix and the heap entries directly. All reuse
 the Count-Min i64 matrix; between them they cover two counter types, both modes
