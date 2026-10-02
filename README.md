@@ -70,7 +70,7 @@ that decoding Coco checks each key's placement against its hash.
 | `univmon_str_l2_2x4_h2` | UnivMon, 2 layers of 2×4, heap 2, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; total weight 70000, standard mode |
 | `univmon_i64_l2_2x4_h2` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300}`, layer 1 heap `{128:5}` |
 | `univmon_empty_l2_2x4_h2` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, both layers complete, total weight 0, unset mode; `key_type` `u64` |
-| `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,4294967296],[-32,-33,-2147483648,i64::MIN]]`; l2 `[256, i64::MAX]` |
+| `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,-32768],[-32,-33,-2147483648,i64::MIN]]`; l2 `[65536, i64::MAX]` |
 | `set_aggregator_strings` | SetAggregator | `08 00` | `{"", "abcdefghijklmnopqrstuvwxyz012345", "api", "web", "é", "中", "～", "😀"}` |
 | `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
 | `delta_result_strings` | DeltaResult | `09 00` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
@@ -173,9 +173,10 @@ file pins the encoding of a pyramid with no keys, whose `key_type` is `u64`.
 The CountL2HH fixture sets the counts, the per-row `l2` accumulators and the
 seed index directly, through the sketch's serde form; no key is hashed. Each
 `l2` is set apart from the counts, since it is carried state rather than the
-row's sum of squares. Row 0's cells span positive fixint / uint8 / uint16 /
-uint64, row 1's negative fixint / int8 / int32 / int64 down to `i64::MIN`; the
-`l2` values are a uint16 and `i64::MAX`, the accumulator's saturation value.
+row's sum of squares. The cells span positive fixint / uint8 / uint16 and
+negative fixint / int8 / int16 / int32 / int64 down to `i64::MIN`; the `l2`
+values are a uint32 and `i64::MAX`, the accumulator's saturation value, a
+uint64. Between them every msgpack integer width appears.
 
 The SetAggregator and DeltaResult fixtures set the string sets directly; neither
 type hashes. Each array is in ascending UTF-8 byte order. The strings cover the
