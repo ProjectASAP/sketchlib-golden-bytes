@@ -44,6 +44,8 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `cs_i32_regular_2x4` | Count Sketch i32, RegularPath | `04 00` | same matrix — differs from the first only by `counter_type` |
 | `kll_f64_k200` | KLL f64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
 | `kll_i64_k200` | KLL i64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
+| `kll_dynamic_f64_k200` | KLLDynamic f64, k=200 | `06 01` | `[2.5, -1.0, 0.0, 1e300, -0.125, 42.0, 3.0e-5]` in that order, compaction seed 42 (not in metadata) |
+| `kll_dynamic_i64_k200` | KLLDynamic i64, k=200 | `06 01` | `[0, 1, -1, 127, -32, 128, -33, 255, -128, 256, -129, 65535, -32768, 65536, -32769, 4294967295, -2147483648, 4294967296, -2147483649, i64::MAX, i64::MIN]` in that order, compaction seed 42 (not in metadata) |
 | `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
 | `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 2; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `k=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
@@ -66,12 +68,16 @@ integer at its minimal width whatever the source type is. So the i32 fixture
 pins that the counter type reaches the bytes, and that nothing else does.
 
 The KLL fixtures are a special case of "state is fixed, not hashed": KLL never
-hashes — it orders raw numeric values — so inserting `1..=50` places exactly
-those retained samples. `k=200` keeps the input below the level-0 capacity, so no
-compaction fires (`num_levels = 1`, one level `[1..50]`) and the state is fully
-deterministic. The fixed compaction seed (42) pins the carried coin state. Only
-the compact KLL (`06 00`) has a golden; the dynamic variant (`06 01`) shares the
-payload shape but lacks a seeded constructor.
+hashes — it orders raw numeric values — so inserting known values places exactly
+those retained samples. `k=200` keeps every input below the level-0 capacity, so
+no compaction fires (`num_levels = 1`, `levels = [0, n]`, items in input order)
+and the state is fully deterministic. The fixed compaction seed (42) pins the
+carried coin state, `[42, 0, 0]`. Compact KLL records the seed in metadata;
+KLLDynamic never emits the `seed` key, so its metadata differs only by omitting
+it. The two variants share the payload shape and differ by `kind_id`. The
+dynamic f64 items are negative, zero and fractional; the dynamic i64 items span
+positive fixint / uint8 / uint16 / uint32 / uint64 and negative fixint / int8 /
+int16 / int32 / int64.
 
 DDSketch never hashes, so its fixtures set the bucket stores, offsets, zero
 count and the `sum` / `min` / `max` scalars directly. The positive fixture's
@@ -94,8 +100,8 @@ is a signed median.
 
 ## Coverage
 
-The fixtures cover nine `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
-Count Sketch, CSHeap, DDSketch and compact KLL. Every other `kind_id` the spec's
+The fixtures cover ten `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+Count Sketch, CSHeap, DDSketch and both KLL variants (compact and dynamic). Every other `kind_id` the spec's
 registry marks *implemented* — Bloom, Space-Saving, Hydra's five
 counter variants, Elastic, Coco, UniformSampling, KMV, the UnivMon family,
 CountL2HH, ExponentialHistogram and EHSketchList — has **no fixture**. The spec
