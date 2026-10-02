@@ -48,6 +48,7 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 2; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `k=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `k=3`; heap `{-1:7, -129:7, 4294967296:3}` |
+| `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `k=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -85,11 +86,17 @@ and two key types. Each heap holds a count tie, which pins the emitted order:
 descending count, ties by key. The string heap is one entry short of `k`; the
 `i64` heap is full, and its keys span negative fixint / int16 / uint64.
 
+The CSHeap fixture sets the Count Sketch matrix and the heap entries directly,
+so its `counts` array is byte-identical to the Count Sketch fixtures'. Its heap
+is one entry short of `k` and holds a count tie (`beta` before `delta`). The
+heap counts span uint64 / positive fixint / negative int8: a CSHeap heap count
+is a signed median.
+
 ## Coverage
 
-The fixtures cover eight `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
-Count Sketch, DDSketch and compact KLL. Every other `kind_id` the spec's registry
-marks *implemented* — Bloom, Space-Saving, CSHeap, Hydra's five
+The fixtures cover nine `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+Count Sketch, CSHeap, DDSketch and compact KLL. Every other `kind_id` the spec's
+registry marks *implemented* — Bloom, Space-Saving, Hydra's five
 counter variants, Elastic, Coco, UniformSampling, KMV, the UnivMon family,
 CountL2HH, ExponentialHistogram and EHSketchList — has **no fixture**. The spec
 fixes their bytes; nothing here checks them.
