@@ -38,6 +38,9 @@ that decoding Coco checks each key's placement against its hash.
 | `hll_classic_p12` | HLL Classic, P12 | `01 01` | 4096 registers, set: `[0]=1, [1]=7, [100]=42, [4095]=3` |
 | `hll_ertl_mle_p12` | HLL Ertl-MLE, P12 | `01 02` | same register pattern |
 | `hll_hip_p12` | HLL HIP, P12 | `01 03` | same registers + `hip_kxq0=1.5, hip_kxq1=2.5, hip_est=3.0` |
+| `hll_classic_p14` | HLL Classic, P14 | `01 01` | 16384 registers, set: `[0]=1, [1]=7, [8192]=42, [16383]=51` |
+| `hll_ertl_mle_p14` | HLL Ertl-MLE, P14 | `01 02` | same register pattern |
+| `hll_hip_p14` | HLL HIP, P14 | `01 03` | same registers + `hip_kxq0=16380.5, hip_kxq1=0.25, hip_est=4.125` |
 | `cms_i64_regular_2x3` | Count-Min i64, RegularPath | `02 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]` |
 | `cms_f64_fast_2x3` | Count-Min f64, FastPath | `02 00` | 2×3 row-major `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]` |
 | `cs_i64_regular_2x4` | Count Sketch i64, RegularPath | `04 00` | 2×4 row-major `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]` |
@@ -72,6 +75,10 @@ that decoding Coco checks each key's placement against its hash.
 | `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
 | `delta_result_strings` | DeltaResult | `09 00` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
 | `delta_result_empty` | DeltaResult, empty | `09 00` | added `{}`; removed `{}` |
+
+The HLL fixtures set the register bytes directly. Each estimator has a P12 and
+a P14 fixture; the P14 set holds register value 51, the largest a P14 register
+takes, and touches the first, a middle and the last index.
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -177,7 +184,7 @@ empty string, a 32-byte str8 and UTF-8 code points of two, three and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-one `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+The fixtures cover twenty-one `kind_id`s: HLL's three estimators (at P12 and P14), Count-Min, CMSHeap,
 Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
