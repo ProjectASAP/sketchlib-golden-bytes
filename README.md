@@ -164,8 +164,8 @@ int16 / int32 down to `i32::MIN`. The two files differ in one byte, the
 The UnivMon fixtures set every layer directly: counters by deltas at named
 cells, which carry each row's `l2` accumulator, and heap entries by explicit
 `(key, count)` pairs; no hash reaches the bytes. The shape's four parameters
-(3 layers, 2 rows, 4 columns, heap 5) and the heap lengths `[3, 1, 2]` differ
-from one another, so no length can stand in for another. Layer 0 holds the
+(3 layers, 2 rows, 4 columns, heap 5) are pairwise distinct, so no dimension can
+stand in for another; the heaps hold 3, 1 and 2 entries. Layer 0 holds the
 Count Sketch matrix, so the counters span positive fixint / uint8 / uint32 and
 negative fixint / int8 / int16 / int32, and both of its `l2` values are uint64.
 The heap counts span uint32 / uint16 / uint8 / positive fixint and the `i64`
