@@ -50,6 +50,9 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 2; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `k=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `k=3`; heap `{-1:7, -129:7, 4294967296:3}` |
+| `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `k=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
+| `cmsheap_i64_regular_2x3_strtie` | CMSHeap i64, RegularPath, `string` keys | `03 00` | same matrix; `k=5`; heap `{"hot":9, "b":5, "aa":5, "Z":5, "a":5}` |
+| `cmsheap_i64_regular_2x3_empty` | CMSHeap i64, RegularPath, empty heap | `03 00` | same matrix; `k=4`; no entries |
 | `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `k=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
 | `hydra_kll_2x2_k200` | Hydra, KLL counter (k=200, m=8), schema `["region","service"]` | `07 00` | 2×2 grid, row-major cells: `[1.0..=5.0]` seed 1, empty seed 2, `[2.5, -1.0, 0.0, 1e300, -0.125]` seed 3, `[3.0e-5]` seed 4; each coin is `[seed, 0, 0]` |
 | `hydra_cm_2x2_counter_2x2` | Hydra, Count-Min counter (2×2 i32, FastPath), same schema | `07 01` | 2×2 grid, row-major cells: `[[0,1],[127,128]]`, `[[255,256],[300,65535]]`, `[[65536,1000000],[2147483647,0]]`, all zero |
@@ -97,11 +100,14 @@ an int8. The signed fixture is `metadata_version` 2, which adds the negative
 store and zero count; its offsets are a uint16 and an int16. α is a single
 metadata `f64`, so both use 0.01.
 
-The CMSHeap fixtures set the matrix and the heap entries directly. Both reuse
+The CMSHeap fixtures set the matrix and the heap entries directly. All reuse
 the Count-Min i64 matrix; between them they cover two counter types, both modes
-and two key types. Each heap holds a count tie, which pins the emitted order:
-descending count, ties by key. The string heap is one entry short of `k`; the
-`i64` heap is full, and its keys span negative fixint / int16 / uint64.
+and two key types. Entries are emitted by descending count, ties by key: a
+signed key compares as its two's-complement bit pattern read unsigned, so
+`i64tie` emits `0, 1, i64::MIN, -1`; a string compares byte-wise, a proper
+prefix first, so `strtie` emits `"Z", "a", "aa", "b"`. The `i64keys` keys span
+negative fixint / int16 / uint64. The empty heap emits `key_type` `"u64"` with
+two empty arrays.
 
 The CSHeap fixture sets the Count Sketch matrix and the heap entries directly,
 so its `counts` array is byte-identical to the Count Sketch fixtures'. Its heap
