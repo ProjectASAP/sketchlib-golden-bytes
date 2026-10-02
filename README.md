@@ -68,6 +68,10 @@ that decoding Coco checks each key's placement against its hash.
 | `univmon_i64_l2_2x4_h2` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300}`, layer 1 heap `{128:5}` |
 | `univmon_empty_l2_2x4_h2` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, both layers complete, total weight 0, unset mode; `key_type` `u64` |
 | `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,4294967296],[-32,-33,-2147483648,i64::MIN]]`; l2 `[256, i64::MAX]` |
+| `set_aggregator_strings` | SetAggregator | `08 00` | `{"", "abcdefghijklmnopqrstuvwxyz012345", "api", "web", "é", "中", "～", "😀"}` |
+| `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
+| `delta_result_strings` | DeltaResult | `09 00` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
+| `delta_result_empty` | DeltaResult, empty | `09 00` | added `{}`; removed `{}` |
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -166,11 +170,17 @@ row's sum of squares. Row 0's cells span positive fixint / uint8 / uint16 /
 uint64, row 1's negative fixint / int8 / int32 / int64 down to `i64::MIN`; the
 `l2` values are a uint16 and `i64::MAX`, the accumulator's saturation value.
 
+The SetAggregator and DeltaResult fixtures set the string sets directly; neither
+type hashes. Each array is in ascending UTF-8 byte order. The strings cover the
+empty string, a 32-byte str8 and UTF-8 code points of two, three and four bytes;
+`"～"` (U+FF5E) precedes `"😀"` (U+1F600), the reverse of their UTF-16 order.
+
 ## Coverage
 
-The fixtures cover nineteen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+The fixtures cover twenty-one `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
 Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
-Hydra's five counter variants, Coco, Elastic, UnivMon and CountL2HH. Every other
+Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
+and DeltaResult. Every other
 `kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
 UniformSampling, KMV, UnivMon Optimized, UnivMon-Q, ExponentialHistogram and
 EHSketchList — has **no fixture**. The spec fixes their bytes; nothing here checks them.
