@@ -59,6 +59,9 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `coco_3x8` | Coco, 3×8 table | `0c 00` | 14 occupied buckets `(row, col): key=value`: `(0,0) "uint16-max"=65535`, `(0,1) "fixint-max"=127`, `(0,2) "clé-ünïcode-流量"=4`, `(0,4) "fixstr-max-31-bytes-0123456789a"=2`, `(0,5) "uint8-min"=128`, `(0,6) "uint64-max"=u64::MAX`, `(0,7) ""=1`, `(1,0) "uint64-min"=4294967296`, `(1,1) "uint32-min"=65536`, `(1,3) "str8-min-32-bytes-0123456789abcd"=3`, `(1,5) "zero"=0`, `(1,6) "uint32-max"=4294967295`, `(1,7) "uint8-max"=255`, `(2,5) "uint16-min"=256`; the other 10 unoccupied |
 | `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
 | `elastic_4b_2x4_stale` | Elastic, same geometry | `0b 00` | same state — differs from the above only by `stale_copies=true` |
+| `univmon_str_l2_2x4_h2` | UnivMon, 2 layers of 2×4, heap 2, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; total weight 70000, standard mode |
+| `univmon_i64_l2_2x4_h2` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300}`, layer 1 heap `{128:5}` |
+| `univmon_empty_l2_2x4_h2` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, both layers complete, total weight 0, unset mode; `key_type` `u64` |
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -134,14 +137,23 @@ row 0 spans uint8 / uint32 up to `i32::MAX` and row 1 negative fixint / int8 /
 int16 / int32 down to `i32::MIN`. The two files differ in one byte, the
 `stale_copies` bool.
 
+The UnivMon fixtures set every layer directly: counters by deltas at named
+cells, which carry each row's `l2` accumulator, and heap entries by explicit
+`(key, count)` pairs; no key is hashed. Layer 0 holds the Count Sketch matrix,
+so the counters span positive fixint / uint8 / uint32 and negative fixint /
+int8 / int16 / int32, and its row-1 `l2` is a uint64. The heap counts span
+uint32 / uint16 / positive fixint and the `i64` keys int64 / negative fixint /
+uint8. The two populated files differ only in `key_type` and `keys`. The empty
+file pins the encoding of a pyramid with no keys, whose `key_type` is `u64`.
+
 ## Coverage
 
-The fixtures cover seventeen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+The fixtures cover eighteen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
 Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
-Hydra's five counter variants, Coco and Elastic. Every other `kind_id` the spec's
-registry marks *implemented* — Bloom, Space-Saving, UniformSampling, KMV, the
-UnivMon family, CountL2HH, ExponentialHistogram and EHSketchList — has **no
-fixture**. The spec fixes their bytes; nothing here checks them.
+Hydra's five counter variants, Coco, Elastic and UnivMon. Every other `kind_id`
+the spec's registry marks *implemented* — Bloom, Space-Saving, UniformSampling,
+KMV, UnivMon Optimized, UnivMon-Q, CountL2HH, ExponentialHistogram and
+EHSketchList — has **no fixture**. The spec fixes their bytes; nothing here checks them.
 
 ## Changing a fixture
 
