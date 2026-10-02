@@ -51,6 +51,11 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `k=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `k=3`; heap `{-1:7, -129:7, 4294967296:3}` |
 | `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `k=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
+| `hydra_kll_2x2_k200` | Hydra, KLL counter (k=200, m=8), schema `["region","service"]` | `07 00` | 2×2 grid, row-major cells: `[1.0..=5.0]` seed 1, empty seed 2, `[2.5, -1.0, 0.0, 1e300, -0.125]` seed 3, `[3.0e-5]` seed 4; each coin is `[seed, 0, 0]` |
+| `hydra_cm_2x2_counter_2x2` | Hydra, Count-Min counter (2×2 i32, FastPath), same schema | `07 01` | 2×2 grid, row-major cells: `[[0,1],[127,128]]`, `[[255,256],[300,65535]]`, `[[65536,1000000],[2147483647,0]]`, all zero |
+| `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
+| `hydra_hll_1x2_p14` | Hydra, HLL Ertl-MLE counter (P14), same schema | `07 03` | 1×2 grid; cell 0 registers `[0]=1, [1]=7, [100]=42, [16383]=3`; cell 1 `[0]=2, [8192]=51`; all others 0 |
+| `hydra_univmon_1x2` | Hydra, UnivMon counter (2 layers of 1×2, heap 2, `u64` keys), same schema | `07 04` | 1×2 grid; cell 0: layer 0 counts `[5,-3]`, l2 `34`, heap `{7:5, 300:2}`, incomplete; layer 1 counts `[0,2]`, l2 `4`, heap `{4294967296:2}`, complete; total weight 7, standard mode; cell 1 empty |
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -98,14 +103,26 @@ is one entry short of `k` and holds a count tie (`beta` before `delta`). The
 heap counts span uint64 / positive fixint / negative int8: a CSHeap heap count
 is a signed median.
 
+The Hydra fixtures set every cell's state directly, so neither the subkeys nor
+the values are hashed: the matrix cells from storage, the HLL registers by
+pre-hashed values crafted to land on each index and rank, the KLL cells by
+inserting raw values (k=200, so no compaction fires) under a distinct
+compaction seed per cell, and the UnivMon layers by counter deltas at named
+cells plus explicit heap entries. Each grid keeps the empty cell's shape in the
+bytes. The 2×2 grids pin grid row-major order; the matrix counters' 2×2 runs pin
+row-major order inside a cell. The Count-Min counters span positive fixint /
+uint8 / uint16 / uint32 up to `i32::MAX`; the Count Sketch counters add negative
+fixint / int8 / int16 / int32 down to `i32::MIN`. The HLL fixture holds register
+value 51, the largest a P14 register takes.
+
 ## Coverage
 
-The fixtures cover ten `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
-Count Sketch, CSHeap, DDSketch and both KLL variants (compact and dynamic). Every other `kind_id` the spec's
-registry marks *implemented* — Bloom, Space-Saving, Hydra's five
-counter variants, Elastic, Coco, UniformSampling, KMV, the UnivMon family,
-CountL2HH, ExponentialHistogram and EHSketchList — has **no fixture**. The spec
-fixes their bytes; nothing here checks them.
+The fixtures cover fifteen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic) and
+Hydra's five counter variants. Every other `kind_id` the spec's registry marks
+*implemented* — Bloom, Space-Saving, Elastic, Coco, UniformSampling, KMV, the
+UnivMon family, CountL2HH, ExponentialHistogram and EHSketchList — has **no
+fixture**. The spec fixes their bytes; nothing here checks them.
 
 ## Changing a fixture
 
