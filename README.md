@@ -67,9 +67,9 @@ that decoding Coco checks each key's placement against its hash.
 | `coco_3x7` | Coco, 3×7 table | `0c 00` | 15 occupied buckets `(row, col): key=value`: `(0,0) "uint32-min"=65536`, `(0,1) "uint16-max"=65535`, `(0,2) "fixint-max"=127`, `(0,3) ""=1`, `(0,4) "uint8-max"=255`, `(0,5) "emoji-😀"=5`, `(1,0) "uint16-min"=256`, `(1,1) "str8-min-32-bytes-0123456789abcd"=3`, `(1,2) "uint8-min"=128`, `(1,3) "clé-ünïcode-流量"=4`, `(1,4) "fixstr-max-31-bytes-0123456789a"=2`, `(1,5) "uint64-min"=4294967296`, `(1,6) "zero"=0`, `(2,1) "uint64-max"=u64::MAX`, `(2,5) "uint32-max"=4294967295`; the other 6 unoccupied |
 | `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free with the flag set, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
 | `elastic_4b_2x4_stale` | Elastic, same geometry | `0b 00` | same state — differs from the above only by `stale_copies=true` |
-| `univmon_str_l2_2x4_h2` | UnivMon, 2 layers of 2×4, heap 2, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; total weight 70000, standard mode |
-| `univmon_i64_l2_2x4_h2` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300}`, layer 1 heap `{128:5}` |
-| `univmon_empty_l2_2x4_h2` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, both layers complete, total weight 0, unset mode; `key_type` `u64` |
+| `univmon_str_l3_2x4_h5` | UnivMon, 3 layers of 2×4, heap 5, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300, "delta":128}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; layer 2 counts `[[0,7,0,0],[-6,0,0,0]]`, l2 `[49, 36]`, heap `{"epsilon":9, "zeta":2}`, complete; total weight 70000, standard mode |
+| `univmon_i64_l3_2x4_h5` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300, -129:128}`, layer 1 heap `{128:5}`, layer 2 heap `{4294967296:9, 7:2}` |
+| `univmon_empty_l3_2x4_h5` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, every layer complete, total weight 0, unset mode; `key_type` `u64` |
 | `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,-32768],[-32,-33,-2147483648,i64::MIN]]`; l2 `[65536, i64::MAX]` |
 | `set_aggregator_strings` | SetAggregator | `08 00` | `{"", "abcdefghijklmnopqrstuvwxyz012345", "api", "web", "é", "中", "～", "😀"}` |
 | `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
@@ -163,12 +163,17 @@ int16 / int32 down to `i32::MIN`. The two files differ in one byte, the
 
 The UnivMon fixtures set every layer directly: counters by deltas at named
 cells, which carry each row's `l2` accumulator, and heap entries by explicit
-`(key, count)` pairs; no key is hashed. Layer 0 holds the Count Sketch matrix,
-so the counters span positive fixint / uint8 / uint32 and negative fixint /
-int8 / int16 / int32, and its row-1 `l2` is a uint64. The heap counts span
-uint32 / uint16 / positive fixint and the `i64` keys int64 / negative fixint /
-uint8. The two populated files differ only in `key_type` and `keys`. The empty
-file pins the encoding of a pyramid with no keys, whose `key_type` is `u64`.
+`(key, count)` pairs; no hash reaches the bytes. The shape's four parameters
+(3 layers, 2 rows, 4 columns, heap 5) and the heap lengths `[3, 1, 2]` differ
+from one another, so no length can stand in for another. Layer 0 holds the
+Count Sketch matrix, so the counters span positive fixint / uint8 / uint32 and
+negative fixint / int8 / int16 / int32, and both of its `l2` values are uint64.
+The heap counts span uint32 / uint16 / uint8 / positive fixint and the `i64`
+keys int64 / negative fixint / int16 / uint8 / uint64 / positive fixint. The two
+populated files differ only in `key_type` and `keys`. The empty file pins the
+encoding of a pyramid with no keys, whose `key_type` is `u64`. The fixtures
+cover `update_mode` 0 (unset) and 1 (standard), not 2 (terminal-only): only a
+hashed insert selects that mode.
 
 The CountL2HH fixture sets the counts, the per-row `l2` accumulators and the
 seed index directly, through the sketch's serde form; no key is hashed. Each
