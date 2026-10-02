@@ -66,6 +66,7 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `univmon_str_l2_2x4_h2` | UnivMon, 2 layers of 2×4, heap 2, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; total weight 70000, standard mode |
 | `univmon_i64_l2_2x4_h2` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300}`, layer 1 heap `{128:5}` |
 | `univmon_empty_l2_2x4_h2` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, both layers complete, total weight 0, unset mode; `key_type` `u64` |
+| `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,4294967296],[-32,-33,-2147483648,i64::MIN]]`; l2 `[256, i64::MAX]` |
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -154,13 +155,20 @@ uint32 / uint16 / positive fixint and the `i64` keys int64 / negative fixint /
 uint8. The two populated files differ only in `key_type` and `keys`. The empty
 file pins the encoding of a pyramid with no keys, whose `key_type` is `u64`.
 
+The CountL2HH fixture sets the counts, the per-row `l2` accumulators and the
+seed index directly, through the sketch's serde form; no key is hashed. Each
+`l2` is set apart from the counts, since it is carried state rather than the
+row's sum of squares. Row 0's cells span positive fixint / uint8 / uint16 /
+uint64, row 1's negative fixint / int8 / int32 / int64 down to `i64::MIN`; the
+`l2` values are a uint16 and `i64::MAX`, the accumulator's saturation value.
+
 ## Coverage
 
-The fixtures cover eighteen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+The fixtures cover nineteen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
 Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
-Hydra's five counter variants, Coco, Elastic and UnivMon. Every other `kind_id`
-the spec's registry marks *implemented* — Bloom, Space-Saving, UniformSampling,
-KMV, UnivMon Optimized, UnivMon-Q, CountL2HH, ExponentialHistogram and
+Hydra's five counter variants, Coco, Elastic, UnivMon and CountL2HH. Every other
+`kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
+UniformSampling, KMV, UnivMon Optimized, UnivMon-Q, ExponentialHistogram and
 EHSketchList — has **no fixture**. The spec fixes their bytes; nothing here checks them.
 
 ## Changing a fixture
