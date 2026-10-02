@@ -57,6 +57,8 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `hydra_hll_1x2_p14` | Hydra, HLL Ertl-MLE counter (P14), same schema | `07 03` | 1×2 grid; cell 0 registers `[0]=1, [1]=7, [100]=42, [16383]=3`; cell 1 `[0]=2, [8192]=51`; all others 0 |
 | `hydra_univmon_1x2` | Hydra, UnivMon counter (2 layers of 1×2, heap 2, `u64` keys), same schema | `07 04` | 1×2 grid; cell 0: layer 0 counts `[5,-3]`, l2 `34`, heap `{7:5, 300:2}`, incomplete; layer 1 counts `[0,2]`, l2 `4`, heap `{4294967296:2}`, complete; total weight 7, standard mode; cell 1 empty |
 | `coco_3x8` | Coco, 3×8 table | `0c 00` | 14 occupied buckets `(row, col): key=value`: `(0,0) "uint16-max"=65535`, `(0,1) "fixint-max"=127`, `(0,2) "clé-ünïcode-流量"=4`, `(0,4) "fixstr-max-31-bytes-0123456789a"=2`, `(0,5) "uint8-min"=128`, `(0,6) "uint64-max"=u64::MAX`, `(0,7) ""=1`, `(1,0) "uint64-min"=4294967296`, `(1,1) "uint32-min"=65536`, `(1,3) "str8-min-32-bytes-0123456789abcd"=3`, `(1,5) "zero"=0`, `(1,6) "uint32-max"=4294967295`, `(1,7) "uint8-max"=255`, `(2,5) "uint16-min"=256`; the other 10 unoccupied |
+| `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
+| `elastic_4b_2x4_stale` | Elastic, same geometry | `0b 00` | same state — differs from the above only by `stale_copies=true` |
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -124,12 +126,20 @@ string (an occupied bucket, distinct from an unoccupied `nil` one), a 31-byte
 fixstr, a 32-byte str8 and a multi-byte UTF-8 key; `"zero"` is an occupied
 bucket holding 0.
 
+The Elastic fixtures set the heavy buckets and the light Count-Min cells
+directly; no flow id is hashed. The heavy table holds a free bucket (`nil`), an
+empty flow id (`""`) and ids of 31 and 32 bytes, the fixstr / str8 boundary. The
+votes span positive fixint / uint8 / uint16 / uint32 up to `i32::MAX`; the light
+row 0 spans uint8 / uint32 up to `i32::MAX` and row 1 negative fixint / int8 /
+int16 / int32 down to `i32::MIN`. The two files differ in one byte, the
+`stale_copies` bool.
+
 ## Coverage
 
-The fixtures cover sixteen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
+The fixtures cover seventeen `kind_id`s: HLL's three estimators, Count-Min, CMSHeap,
 Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
-Hydra's five counter variants and Coco. Every other `kind_id` the spec's registry
-marks *implemented* — Bloom, Space-Saving, Elastic, UniformSampling, KMV, the
+Hydra's five counter variants, Coco and Elastic. Every other `kind_id` the spec's
+registry marks *implemented* — Bloom, Space-Saving, UniformSampling, KMV, the
 UnivMon family, CountL2HH, ExponentialHistogram and EHSketchList — has **no
 fixture**. The spec fixes their bytes; nothing here checks them.
 
