@@ -28,7 +28,8 @@ git submodule add https://github.com/ProjectASAP/sketchlib-golden-bytes.git asap
 
 Every fixture is built from a **known raw sketch state** (specific register
 bytes / matrix values set directly), never by hashing input values. So the
-golden tests the **wire encoding**, isolated from the hash functions.
+golden tests the **wire encoding**, isolated from the hash functions, except
+that decoding Coco checks each key's placement against its hash.
 
 ## Fixtures
 
@@ -60,7 +61,7 @@ golden tests the **wire encoding**, isolated from the hash functions.
 | `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
 | `hydra_hll_1x2_p14` | Hydra, HLL Ertl-MLE counter (P14), same schema | `07 03` | 1×2 grid; cell 0 registers `[0]=1, [1]=7, [100]=42, [16383]=3`; cell 1 `[0]=2, [8192]=51`; all others 0 |
 | `hydra_univmon_1x2` | Hydra, UnivMon counter (2 layers of 1×2, heap 2, `u64` keys), same schema | `07 04` | 1×2 grid; cell 0: layer 0 counts `[5,-3]`, l2 `34`, heap `{7:5, 300:2}`, incomplete; layer 1 counts `[0,2]`, l2 `4`, heap `{4294967296:2}`, complete; total weight 7, standard mode; cell 1 empty |
-| `coco_3x8` | Coco, 3×8 table | `0c 00` | 14 occupied buckets `(row, col): key=value`: `(0,0) "uint16-max"=65535`, `(0,1) "fixint-max"=127`, `(0,2) "clé-ünïcode-流量"=4`, `(0,4) "fixstr-max-31-bytes-0123456789a"=2`, `(0,5) "uint8-min"=128`, `(0,6) "uint64-max"=u64::MAX`, `(0,7) ""=1`, `(1,0) "uint64-min"=4294967296`, `(1,1) "uint32-min"=65536`, `(1,3) "str8-min-32-bytes-0123456789abcd"=3`, `(1,5) "zero"=0`, `(1,6) "uint32-max"=4294967295`, `(1,7) "uint8-max"=255`, `(2,5) "uint16-min"=256`; the other 10 unoccupied |
+| `coco_3x7` | Coco, 3×7 table | `0c 00` | 15 occupied buckets `(row, col): key=value`: `(0,0) "uint32-min"=65536`, `(0,1) "uint16-max"=65535`, `(0,2) "fixint-max"=127`, `(0,3) ""=1`, `(0,4) "uint8-max"=255`, `(0,5) "emoji-😀"=5`, `(1,0) "uint16-min"=256`, `(1,1) "str8-min-32-bytes-0123456789abcd"=3`, `(1,2) "uint8-min"=128`, `(1,3) "clé-ünïcode-流量"=4`, `(1,4) "fixstr-max-31-bytes-0123456789a"=2`, `(1,5) "uint64-min"=4294967296`, `(1,6) "zero"=0`, `(2,1) "uint64-max"=u64::MAX`, `(2,5) "uint32-max"=4294967295`; the other 6 unoccupied |
 | `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
 | `elastic_4b_2x4_stale` | Elastic, same geometry | `0b 00` | same state — differs from the above only by `stale_copies=true` |
 | `univmon_str_l2_2x4_h2` | UnivMon, 2 layers of 2×4, heap 2, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; total weight 70000, standard mode |
@@ -131,12 +132,14 @@ fixint / int8 / int16 / int32 down to `i32::MIN`. The HLL fixture holds register
 value 51, the largest a P14 register takes.
 
 The Coco fixture sets every bucket's key and value directly. Each key sits in
-the column its row hashes it to, because a decoder rejects any other placement;
-the bytes themselves carry no hash. The values span positive fixint / uint8 /
-uint16 / uint32 / uint64 at both ends of each width. The keys cover the empty
-string (an occupied bucket, distinct from an unoccupied `nil` one), a 31-byte
-fixstr, a 32-byte str8 and a multi-byte UTF-8 key; `"zero"` is an occupied
-bucket holding 0.
+the column its row hashes it to, folded `% cols`, because a decoder rejects any
+other placement; the bytes themselves carry no hash. The width is 7, not a power
+of two, so a port that folds with a mask (`& (cols-1)`) instead of `% cols`
+misplaces the keys and fails the fixture. The values span positive fixint /
+uint8 / uint16 / uint32 / uint64 at both ends of each width. The keys cover the
+empty string (an occupied bucket, distinct from an unoccupied `nil` one), a
+31-byte fixstr, a 32-byte str8, and UTF-8 code points of two, three and four
+bytes; `"zero"` is an occupied bucket holding 0.
 
 The Elastic fixtures set the heavy buckets and the light Count-Min cells
 directly; no flow id is hashed. The heavy table holds a free bucket (`nil`), an
