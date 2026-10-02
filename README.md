@@ -62,7 +62,7 @@ that decoding Coco checks each key's placement against its hash.
 | `hydra_hll_1x2_p14` | Hydra, HLL Ertl-MLE counter (P14), same schema | `07 03` | 1×2 grid; cell 0 registers `[0]=1, [1]=7, [100]=42, [16383]=3`; cell 1 `[0]=2, [8192]=51`; all others 0 |
 | `hydra_univmon_1x2` | Hydra, UnivMon counter (2 layers of 1×2, heap 2, `u64` keys), same schema | `07 04` | 1×2 grid; cell 0: layer 0 counts `[5,-3]`, l2 `34`, heap `{7:5, 300:2}`, incomplete; layer 1 counts `[0,2]`, l2 `4`, heap `{4294967296:2}`, complete; total weight 7, standard mode; cell 1 empty |
 | `coco_3x7` | Coco, 3×7 table | `0c 00` | 15 occupied buckets `(row, col): key=value`: `(0,0) "uint32-min"=65536`, `(0,1) "uint16-max"=65535`, `(0,2) "fixint-max"=127`, `(0,3) ""=1`, `(0,4) "uint8-max"=255`, `(0,5) "emoji-😀"=5`, `(1,0) "uint16-min"=256`, `(1,1) "str8-min-32-bytes-0123456789abcd"=3`, `(1,2) "uint8-min"=128`, `(1,3) "clé-ünïcode-流量"=4`, `(1,4) "fixstr-max-31-bytes-0123456789a"=2`, `(1,5) "uint64-min"=4294967296`, `(1,6) "zero"=0`, `(2,1) "uint64-max"=u64::MAX`, `(2,5) "uint32-max"=4294967295`; the other 6 unoccupied |
-| `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
+| `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free with the flag set, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
 | `elastic_4b_2x4_stale` | Elastic, same geometry | `0b 00` | same state — differs from the above only by `stale_copies=true` |
 | `univmon_str_l2_2x4_h2` | UnivMon, 2 layers of 2×4, heap 2, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; total weight 70000, standard mode |
 | `univmon_i64_l2_2x4_h2` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300}`, layer 1 heap `{128:5}` |
@@ -142,8 +142,9 @@ empty string (an occupied bucket, distinct from an unoccupied `nil` one), a
 bytes; `"zero"` is an occupied bucket holding 0.
 
 The Elastic fixtures set the heavy buckets and the light Count-Min cells
-directly; no flow id is hashed. The heavy table holds a free bucket (`nil`), an
-empty flow id (`""`) and ids of 31 and 32 bytes, the fixstr / str8 boundary. The
+directly; no flow id is hashed. The heavy table holds a free bucket (`nil`)
+whose eviction flag is set, as a vacated bucket keeps it, an empty flow id
+(`""`) and ids of 31 and 32 bytes, the fixstr / str8 boundary. The
 votes span positive fixint / uint8 / uint16 / uint32 up to `i32::MAX`; the light
 row 0 spans uint8 / uint32 up to `i32::MAX` and row 1 negative fixint / int8 /
 int16 / int32 down to `i32::MIN`. The two files differ in one byte, the
