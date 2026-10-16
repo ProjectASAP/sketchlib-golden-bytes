@@ -41,6 +41,8 @@ that decoding Coco checks each key's placement against its hash.
 | `hll_classic_p14` | HLL Classic, P14 | `01 01` | 16384 registers, set: `[0]=1, [1]=7, [8192]=42, [16383]=51` |
 | `hll_ertl_mle_p14` | HLL Ertl-MLE, P14 | `01 02` | same register pattern |
 | `hll_hip_p14` | HLL HIP, P14 | `01 03` | same registers + `hip_kxq0=16380.5, hip_kxq1=0.25, hip_est=4.125` |
+| `hll_classic_p14_delta` | HLL Classic delta, P14 | `01 81` | indices `[0,2,200,8192,16383]`, registers `[51,1,9,7,1]`; merged into `hll_classic_p14` gives `[0]=51, [1]=7, [2]=1, [200]=9, [8192]=42, [16383]=51` |
+| `hll_ertl_mle_p14_delta` | HLL Ertl-MLE delta, P14 | `01 82` | same delta; merged into `hll_ertl_mle_p14` gives the same registers |
 | `cms_i64_regular_2x3` | Count-Min i64, RegularPath | `02 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]` |
 | `cms_f64_fast_2x3` | Count-Min f64, FastPath | `02 00` | 2×3 row-major `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]` |
 | `cms_i64_regular_2x3_delta` | Count-Min i64 delta, RegularPath, 2×3 | `02 80` | indices `[0,1,2,4,5]`, deltas `[127,-1,-33,-32769,4294967296]`; merged into `cms_i64_regular_2x3` gives `[[127,0,94],[128,-32469,4295032832]]` |
@@ -84,6 +86,12 @@ that decoding Coco checks each key's placement against its hash.
 The HLL fixtures set the register bytes directly. Each estimator has a P12 and
 a P14 fixture; the P14 set holds register value 51, the largest a P14 register
 takes, and touches the first, a middle and the last index.
+
+The HLL delta fixtures carry the metadata block of the P14 state fixture they
+merge into, byte for byte, under kind_id `01 81` or `01 82`. Their registers
+hold 1 and 51, the smallest and largest a delta carries, and their indices the
+first, a middle and the last; the delta raises `[0]` and leaves `[8192]` and
+`[16383]`, which hold more, unchanged.
 
 The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
@@ -209,7 +217,7 @@ and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-three `kind_id`s: HLL's three estimators (at P12 and P14), Count-Min and its delta, CMSHeap,
+The fixtures cover twenty-five `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap,
 Count Sketch and its delta, CSHeap, DDSketch, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
