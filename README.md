@@ -73,8 +73,8 @@ that decoding Coco checks each key's placement against its hash.
 | `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,-32768],[-32,-33,-2147483648,i64::MIN]]`; l2 `[65536, i64::MAX]` |
 | `set_aggregator_strings` | SetAggregator | `08 00` | `{"", "ab", "abc", "abcdefghijklmnopqrstuvwxyz012345", "api", "fixstr-max-31-bytes-0123456789a", "web", "é", "中", "～", "😀"}` |
 | `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
-| `delta_result_strings` | DeltaResult | `09 00` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
-| `delta_result_empty` | DeltaResult, empty | `09 00` | added `{}`; removed `{}` |
+| `delta_result_strings` | DeltaResult | `08 80` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
+| `delta_result_empty` | DeltaResult, empty | `08 80` | added `{}`; removed `{}` |
 
 The HLL fixtures set the register bytes directly. Each estimator has a P12 and
 a P14 fixture; the P14 set holds register value 51, the largest a P14 register
