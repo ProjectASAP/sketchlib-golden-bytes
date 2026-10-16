@@ -48,6 +48,9 @@ that decoding Coco checks each key's placement against its hash.
 | `cs_i64_regular_2x4` | Count Sketch i64, RegularPath | `04 00` | 2×4 row-major `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]` |
 | `cs_i64_fast_2x4` | Count Sketch i64, FastPath | `04 00` | same matrix — differs from the above only by `mode` |
 | `cs_i32_regular_2x4` | Count Sketch i32, RegularPath | `04 00` | same matrix — differs from the first only by `counter_type` |
+| `cs_f64_fast_2x4` | Count Sketch f64, FastPath | `04 00` | 2×4 row-major `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]` |
+| `cs_i64_regular_2x4_delta` | Count Sketch i64 delta, RegularPath, 2×4 | `04 80` | indices `[0,1,2,4,6,7]`, deltas `[-32,-128,255,-129,65535,-2147483649]`; merged into `cs_i64_regular_2x4` gives `[[-32,-1,383,65536],[-130,-33,32767,-4294967297]]` |
+| `cs_f64_fast_2x4_delta` | Count Sketch f64 delta, FastPath, 2×4 | `04 80` | indices `[1,3,5,7]`, deltas `[-0.75,2.25,0.5,1e300]`; merged into `cs_f64_fast_2x4` gives `[[0.0,-0.75,1.5,0.0],[127.0,-32768.0,0.125,0.0]]` |
 | `kll_f64_k200` | KLL f64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
 | `kll_i64_k200` | KLL i64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
 | `kll_dynamic_f64_k200` | KLLDynamic f64, k=200 | `06 01` | `[2.5, -1.0, 0.0, 1e300, -0.125, 42.0, 3.0e-5]` in that order, compaction seed 42 (not in metadata) |
@@ -96,12 +99,18 @@ The Count Sketch fixtures cover the **negative** side, because Count Sketch
 cells are signed — it adds `±weight`: negative fixint / int8 / int16 / int32,
 alongside positive fixint / uint8 / uint32.
 
-All three Count Sketch files hold the same matrix, so each pair isolates one
-metadata key: the two i64 files differ only by `mode`, and `cs_i32_regular_2x4`
+The three integer Count Sketch files hold the same matrix, so each pair isolates
+one metadata key: the two i64 files differ only by `mode`, and `cs_i32_regular_2x4`
 differs from `cs_i64_regular_2x4` only in the `counter_type` value, `"i64"`
 against `"i32"`. The payloads are byte-identical, because msgpack encodes an
 integer at its minimal width whatever the source type is. So the i32 fixture
 pins that the counter type reaches the bytes, and that nothing else does.
+
+The Count Sketch delta fixtures carry the metadata block of the state fixture
+they merge into, byte for byte, under kind_id `04 80`. The i64 delta leaves
+cells 3 and 5 out, and its deltas span negative fixint `-32`, int8 `-128`,
+uint8 `255`, int16 `-129`, uint16 `65535` and int64 `-2147483649`; each is the
+first or last value of its width.
 
 The KLL fixtures are a special case of "state is fixed, not hashed": KLL never
 hashes — it orders raw numeric values — so inserting known values places exactly
@@ -200,8 +209,8 @@ and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-two `kind_id`s: HLL's three estimators (at P12 and P14), Count-Min and its delta, CMSHeap,
-Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
+The fixtures cover twenty-three `kind_id`s: HLL's three estimators (at P12 and P14), Count-Min and its delta, CMSHeap,
+Count Sketch and its delta, CSHeap, DDSketch, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
 `kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
