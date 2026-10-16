@@ -57,9 +57,10 @@ that decoding Coco checks each key's placement against its hash.
 | `kll_i64_k200` | KLL i64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
 | `kll_dynamic_f64_k200` | KLLDynamic f64, k=200 | `06 01` | `[2.5, -1.0, 0.0, 1e300, -0.125, 42.0, 3.0e-5]` in that order, compaction seed 42 (not in metadata) |
 | `kll_dynamic_i64_k200` | KLLDynamic i64, k=200 | `06 01` | `[0, 1, -1, 127, -32, 128, -33, 255, -128, 256, -129, 65535, -32768, 65536, -32769, 4294967295, -2147483648, 4294967296, -2147483649, i64::MAX, i64::MIN]` in that order, compaction seed 42 (not in metadata) |
-| `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
-| `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 2; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
-| `ddsketch_empty_a001` | DDSketch, α=0.01, empty | `05 00` | `metadata_version` 1; empty positive store at offset `0`; `sum=0.0, min=+inf, max=-inf` |
+| `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; empty negative store at offset `0`; `zero_count=0`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
+| `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 1; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
+| `ddsketch_empty_a001` | DDSketch, α=0.01, empty | `05 00` | `metadata_version` 1; empty stores at offset `0`; `zero_count=0`; `sum=0.0, min=+inf, max=-inf` |
+| `ddsketch_signed_a001_delta` | DDSketch delta, α=0.01 | `05 80` | indices `[-300,-100,-5,7,200,400]`, deltas `[1,127,128,256,65536,4294967296]`; negative indices `[-208,-33,-1,0,130,1000]`, negative deltas `[2,3,3,1,3,1]`; `zero_count=9`; merged into `ddsketch_signed_a001` gives positive buckets `{-300:1, -100:127, -5:128, 7:256, 200:65536, 310:3, 312:2, 400:4294967296}`, negative buckets `{-208:7, -207:1, -33:3, -1:3, 0:1, 130:3, 1000:1}`, `zero_count=16`, `min=-r(1000)`, `max=r(400)`, where `r(k) = 1.01·γ^k` |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `heap_size=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `heap_size=3`; heap `{-1:7, -129:7, 4294967296:3}` |
 | `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `heap_size=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
@@ -139,10 +140,19 @@ int16 / int32 / int64.
 DDSketch never hashes, so its fixtures set the bucket stores, offsets, zero
 count and the `sum` / `min` / `max` scalars directly. The positive fixture's
 counts span positive fixint / uint8 / uint16 / uint32 / uint64 and its offset is
-an int8. The signed fixture is `metadata_version` 2, which adds the negative
-store and zero count; its offsets are a uint16 and an int16. The empty fixture
-is a fresh sketch: no buckets and the `0.0` / `+inf` / `-inf` scalars. α is a
-single metadata `f64`, so all three use 0.01.
+an int8. Every payload carries both stores and the zero count, so the positive
+and empty fixtures hold an empty negative store at offset `0` and a zero
+`zero_count`. The signed fixture's offsets are a uint16 and an int16. The empty
+fixture is a fresh sketch: no buckets and the `0.0` / `+inf` / `-inf` scalars.
+α is a single metadata `f64`, so all three use 0.01.
+
+The DDSketch delta fixture carries the metadata block of `ddsketch_signed_a001`,
+byte for byte, under kind_id `05 80`. Its indices in each store span int16,
+int8, negative fixint, positive fixint, uint8 and uint16, and its positive
+deltas span positive fixint / uint8 / uint16 / uint32 / uint64. Merged, each
+bucket's representative `r(k) = (1 + α)·γ^k`, negated in the negative store, is
+folded into `sum` (as `r·count`), `min` and `max`, positive store first, in
+payload order.
 
 The CMSHeap fixtures set the matrix and the heap entries directly. The integer
 ones reuse the Count-Min i64 matrix; between them they cover two counter types,
@@ -238,8 +248,8 @@ and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-seven `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
-Count Sketch and its delta, CSHeap and its delta, DDSketch, both KLL variants (compact and dynamic),
+The fixtures cover twenty-eight `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
+Count Sketch and its delta, CSHeap and its delta, DDSketch and its delta, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
 `kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
