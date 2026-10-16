@@ -43,6 +43,8 @@ that decoding Coco checks each key's placement against its hash.
 | `hll_hip_p14` | HLL HIP, P14 | `01 03` | same registers + `hip_kxq0=16380.5, hip_kxq1=0.25, hip_est=4.125` |
 | `cms_i64_regular_2x3` | Count-Min i64, RegularPath | `02 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]` |
 | `cms_f64_fast_2x3` | Count-Min f64, FastPath | `02 00` | 2×3 row-major `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]` |
+| `cms_i64_regular_2x3_delta` | Count-Min i64 delta, RegularPath, 2×3 | `02 80` | indices `[0,1,2,4,5]`, deltas `[127,-1,-33,-32769,4294967296]`; merged into `cms_i64_regular_2x3` gives `[[127,0,94],[128,-32469,4295032832]]` |
+| `cms_f64_fast_2x3_delta` | Count-Min f64 delta, FastPath, 2×3 | `02 80` | indices `[0,3,5]`, deltas `[2.5,-0.75,-5.0625]`; merged into `cms_f64_fast_2x3` gives `[[2.5,1.5,2.25],[3.0,4.125,0.0]]` |
 | `cs_i64_regular_2x4` | Count Sketch i64, RegularPath | `04 00` | 2×4 row-major `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]` |
 | `cs_i64_fast_2x4` | Count Sketch i64, FastPath | `04 00` | same matrix — differs from the above only by `mode` |
 | `cs_i32_regular_2x4` | Count Sketch i32, RegularPath | `04 00` | same matrix — differs from the first only by `counter_type` |
@@ -84,9 +86,15 @@ The CMS i64 fixture deliberately spans the msgpack integer width boundaries
 (positive fixint / uint8 / uint16 / uint32) to lock the "non-negative integer →
 uint family, minimal width" rule (spec Section 4).
 
-The Count Sketch fixtures cover the **negative** side, which no other fixture
-reaches, because Count Sketch cells are signed — it adds `±weight`: negative
-fixint / int8 / int16 / int32, alongside positive fixint / uint8 / uint32.
+The Count-Min delta fixtures carry the metadata block of the state fixture they
+merge into, byte for byte, under kind_id `02 80`. The i64 delta leaves cell 3
+out, and its deltas span positive fixint `127`, negative fixint `-1`, int8
+`-33`, int32 `-32769` and uint64 `4294967296`; each is the first or last value
+of its width.
+
+The Count Sketch fixtures cover the **negative** side, because Count Sketch
+cells are signed — it adds `±weight`: negative fixint / int8 / int16 / int32,
+alongside positive fixint / uint8 / uint32.
 
 All three Count Sketch files hold the same matrix, so each pair isolates one
 metadata key: the two i64 files differ only by `mode`, and `cs_i32_regular_2x4`
@@ -192,7 +200,7 @@ and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-one `kind_id`s: HLL's three estimators (at P12 and P14), Count-Min, CMSHeap,
+The fixtures cover twenty-two `kind_id`s: HLL's three estimators (at P12 and P14), Count-Min and its delta, CMSHeap,
 Count Sketch, CSHeap, DDSketch, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
