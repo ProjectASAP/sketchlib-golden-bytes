@@ -60,12 +60,14 @@ that decoding Coco checks each key's placement against its hash.
 | `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
 | `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 2; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
 | `ddsketch_empty_a001` | DDSketch, α=0.01, empty | `05 00` | `metadata_version` 1; empty positive store at offset `0`; `sum=0.0, min=+inf, max=-inf` |
-| `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `k=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
-| `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `k=3`; heap `{-1:7, -129:7, 4294967296:3}` |
-| `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `k=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
-| `cmsheap_i64_regular_2x3_strtie` | CMSHeap i64, RegularPath, `string` keys | `03 00` | same matrix; `k=5`; heap `{"hot":9, "b":5, "aa":5, "Z":5, "a":5}` |
-| `cmsheap_i64_regular_2x3_empty` | CMSHeap i64, RegularPath, empty heap | `03 00` | same matrix; `k=4`; no entries |
-| `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `k=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
+| `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `heap_size=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
+| `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `heap_size=3`; heap `{-1:7, -129:7, 4294967296:3}` |
+| `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `heap_size=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
+| `cmsheap_i64_regular_2x3_strtie` | CMSHeap i64, RegularPath, `string` keys | `03 00` | same matrix; `heap_size=5`; heap `{"hot":9, "b":5, "aa":5, "Z":5, "a":5}` |
+| `cmsheap_i64_regular_2x3_empty` | CMSHeap i64, RegularPath, empty heap | `03 00` | same matrix; `heap_size=4`; no entries |
+| `cmsheap_f64_fast_2x3_f64keys` | CMSHeap f64, FastPath, `f64` keys | `03 00` | the Count-Min f64 matrix `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]`; `heap_size=6`; heap `{2.0:+inf, 1.5:300.25, -0.5:300.25, 8.0:0.0, 7.0:-0.0, 9.0:-inf}` |
+| `cmsheap_i64_regular_2x3_delta` | CMSHeap i64 delta, RegularPath, 2×3, `i64` keys | `03 80` | indices `[0,1,2,4,5]`, deltas `[127,-1,-33,-32769,4294967296]`; `heap_size=5`; heap `{-1:4295032832, 7:128, -129:128}`; merged into `cmsheap_i64_regular_2x3_strkeys` gives `[[127,0,94],[128,-32469,4295032832]]` and the delta's heap |
+| `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `heap_size=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
 | `hydra_kll_2x2_k200` | Hydra, KLL counter (k=200, m=8), schema `["region","service"]` | `07 00` | 2×2 grid, row-major cells: `[1.0..=5.0]` seed 1, empty seed 2, `[2.5, -1.0, 0.0, 1e300, -0.125]` seed 3, `[3.0e-5]` seed 4; each coin is `[seed, 0, 0]` |
 | `hydra_cm_2x2_counter_2x2` | Hydra, Count-Min counter (2×2 i32, FastPath), same schema | `07 01` | 2×2 grid, row-major cells: `[[0,1],[127,128]]`, `[[255,256],[300,65535]]`, `[[65536,1000000],[2147483647,0]]`, all zero |
 | `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
@@ -140,20 +142,28 @@ store and zero count; its offsets are a uint16 and an int16. The empty fixture
 is a fresh sketch: no buckets and the `0.0` / `+inf` / `-inf` scalars. α is a
 single metadata `f64`, so all three use 0.01.
 
-The CMSHeap fixtures set the matrix and the heap entries directly. All reuse
-the Count-Min i64 matrix; between them they cover two counter types, both modes
-and two key types. Entries are emitted by descending count, ties by key: a
-signed key compares as its two's-complement bit pattern read unsigned, so
+The CMSHeap fixtures set the matrix and the heap entries directly. The integer
+ones reuse the Count-Min i64 matrix; between them they cover two counter types,
+both modes and two key types. Entries are emitted by descending count, ties by
+key: a signed key compares as its two's-complement bit pattern read unsigned, so
 `i64tie` emits `0, 1, i64::MIN, -1`; a string compares byte-wise, a proper
 prefix first, so `strtie` emits `"Z", "a", "aa", "b"`. The `i64keys` keys span
 negative fixint / int16 / uint64. The empty heap emits `key_type` `"u64"` with
 two empty arrays.
 
+The f64 CMSHeap fixture carries float64 heap counts, ordered by IEEE-754
+`totalOrder` (Rust `f64::total_cmp`): `+inf` first, `0.0` before `-0.0`, `-inf`
+last. Its `300.25` tie falls to the keys' bits, so `1.5` precedes `-0.5`.
+
+The CMSHeap delta fixture carries the metadata block of
+`cmsheap_i64_regular_2x3_strkeys` except `key_type`, `"i64"` for its own heap,
+under kind_id `03 80`. Its cells are the Count-Min i64 delta's.
+
 The CSHeap fixture sets the Count Sketch matrix and the heap entries directly,
 so its `counts` array is byte-identical to the Count Sketch fixtures'. Its heap
-is one entry short of `k` and holds a count tie (`beta` before `delta`). The
-heap counts span uint64 / positive fixint / negative int8: a CSHeap heap count
-is a signed median.
+is one entry short of `heap_size` and holds a count tie (`beta` before
+`delta`). The heap counts span uint64 / positive fixint / negative int8: a
+CSHeap heap count is a signed median.
 
 The Hydra fixtures set every cell's state directly, so neither the subkeys nor
 the values are hashed: the matrix cells from storage, the HLL registers by
@@ -217,7 +227,7 @@ and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-five `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap,
+The fixtures cover twenty-six `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
 Count Sketch and its delta, CSHeap, DDSketch, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
