@@ -68,6 +68,8 @@ that decoding Coco checks each key's placement against its hash.
 | `cmsheap_f64_fast_2x3_f64keys` | CMSHeap f64, FastPath, `f64` keys | `03 00` | the Count-Min f64 matrix `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]`; `heap_size=6`; heap `{2.0:+inf, 1.5:300.25, -0.5:300.25, 8.0:0.0, 7.0:-0.0, 9.0:-inf}` |
 | `cmsheap_i64_regular_2x3_delta` | CMSHeap i64 delta, RegularPath, 2×3, `i64` keys | `03 80` | indices `[0,1,2,4,5]`, deltas `[127,-1,-33,-32769,4294967296]`; `heap_size=5`; heap `{-1:4295032832, 7:128, -129:128}`; merged into `cmsheap_i64_regular_2x3_strkeys` gives `[[127,0,94],[128,-32469,4295032832]]` and the delta's heap |
 | `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `heap_size=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
+| `csheap_f64_fast_2x4_strkeys` | CSHeap f64, FastPath, `string` keys | `0a 00` | the Count Sketch f64 matrix `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]`; `heap_size=4`; heap `{"alpha":63.5625, "aa":-0.75, "beta":-0.75, "gamma":-16384.25}` |
+| `csheap_i64_regular_2x4_delta` | CSHeap i64 delta, RegularPath, 2×4, `i64` keys | `0a 80` | indices `[0,1,2,4,6,7]`, deltas `[-32,-128,255,-129,65535,-2147483649]`; `heap_size=5`; heap `{-1:65536, 7:-33, -129:-4294967297}`; merged into `csheap_i64_regular_2x4_strkeys` gives `[[-32,-1,383,65536],[-130,-33,32767,-4294967297]]` and the delta's heap |
 | `hydra_kll_2x2_k200` | Hydra, KLL counter (k=200, m=8), schema `["region","service"]` | `07 00` | 2×2 grid, row-major cells: `[1.0..=5.0]` seed 1, empty seed 2, `[2.5, -1.0, 0.0, 1e300, -0.125]` seed 3, `[3.0e-5]` seed 4; each coin is `[seed, 0, 0]` |
 | `hydra_cm_2x2_counter_2x2` | Hydra, Count-Min counter (2×2 i32, FastPath), same schema | `07 01` | 2×2 grid, row-major cells: `[[0,1],[127,128]]`, `[[255,256],[300,65535]]`, `[[65536,1000000],[2147483647,0]]`, all zero |
 | `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
@@ -159,11 +161,20 @@ The CMSHeap delta fixture carries the metadata block of
 `cmsheap_i64_regular_2x3_strkeys` except `key_type`, `"i64"` for its own heap,
 under kind_id `03 80`. Its cells are the Count-Min i64 delta's.
 
-The CSHeap fixture sets the Count Sketch matrix and the heap entries directly,
-so its `counts` array is byte-identical to the Count Sketch fixtures'. Its heap
-is one entry short of `heap_size` and holds a count tie (`beta` before
-`delta`). The heap counts span uint64 / positive fixint / negative int8: a
-CSHeap heap count is a signed median.
+The CSHeap state fixtures set the Count Sketch matrix and the heap entries
+directly, so their `counts` arrays are byte-identical to the Count Sketch
+fixtures'. The i64 one's heap is one entry short of `heap_size` and holds a
+count tie (`beta` before `delta`); its heap counts span uint64 / positive
+fixint / negative int8: a CSHeap heap count is a signed median.
+
+The f64 CSHeap fixture carries float64 heap counts, the unrounded signed median:
+`-16384.25` is a negative one and `63.5625` a fractional one. Its `-0.75` tie
+falls to the keys, so `"aa"` precedes `"beta"`.
+
+The CSHeap delta fixture carries the metadata block of
+`csheap_i64_regular_2x4_strkeys` except `key_type`, `"i64"` for its own heap,
+under kind_id `0a 80`. Its cells are the Count Sketch i64 delta's; its heap
+counts span uint32 / negative int8 / int64.
 
 The Hydra fixtures set every cell's state directly, so neither the subkeys nor
 the values are hashed: the matrix cells from storage, the HLL registers by
@@ -227,8 +238,8 @@ and four bytes;
 
 ## Coverage
 
-The fixtures cover twenty-six `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
-Count Sketch and its delta, CSHeap, DDSketch, both KLL variants (compact and dynamic),
+The fixtures cover twenty-seven `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
+Count Sketch and its delta, CSHeap and its delta, DDSketch, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
 and DeltaResult. Every other
 `kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
