@@ -38,16 +38,19 @@ that decoding Coco checks each key's placement against its hash.
 | `hll_classic_p12` | HLL Classic, P12 | `01 01` | 4096 registers, set: `[0]=1, [1]=7, [100]=42, [4095]=3` |
 | `hll_ertl_mle_p12` | HLL Ertl-MLE, P12 | `01 02` | same register pattern |
 | `hll_hip_p12` | HLL HIP, P12 | `01 03` | same registers + `hip_kxq0=1.5, hip_kxq1=2.5, hip_est=3.0` |
+| `hll_classic_p12_admission` | HLL Classic, P12, sampled | `01 01` | the `hll_classic_p12` registers; `admission_rate=0.5` |
 | `hll_classic_p14` | HLL Classic, P14 | `01 01` | 16384 registers, set: `[0]=1, [1]=7, [8192]=42, [16383]=51` |
 | `hll_ertl_mle_p14` | HLL Ertl-MLE, P14 | `01 02` | same register pattern |
 | `hll_hip_p14` | HLL HIP, P14 | `01 03` | same registers + `hip_kxq0=16380.5, hip_kxq1=0.25, hip_est=4.125` |
 | `hll_classic_p14_delta` | HLL Classic delta, P14 | `01 81` | indices `[0,2,200,8192,16383]`, registers `[51,1,9,7,1]`; merged into `hll_classic_p14` gives `[0]=51, [1]=7, [2]=1, [200]=9, [8192]=42, [16383]=51` |
 | `hll_ertl_mle_p14_delta` | HLL Ertl-MLE delta, P14 | `01 82` | same delta; merged into `hll_ertl_mle_p14` gives the same registers |
 | `cms_i64_regular_2x3` | Count-Min i64, RegularPath | `02 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]` |
+| `cms_i64_regular_2x3_admission` | Count-Min i64, RegularPath, sampled | `02 00` | the `cms_i64_regular_2x3` matrix; `admission_rate=0.1` |
 | `cms_f64_fast_2x3` | Count-Min f64, FastPath | `02 00` | 2×3 row-major `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]` |
 | `cms_i64_regular_2x3_delta` | Count-Min i64 delta, RegularPath, 2×3 | `02 80` | indices `[0,1,2,4,5]`, deltas `[127,-1,-33,-32769,4294967296]`; merged into `cms_i64_regular_2x3` gives `[[127,0,94],[128,-32469,4295032832]]` |
 | `cms_f64_fast_2x3_delta` | Count-Min f64 delta, FastPath, 2×3 | `02 80` | indices `[0,3,5]`, deltas `[2.5,-0.75,-5.0625]`; merged into `cms_f64_fast_2x3` gives `[[2.5,1.5,2.25],[3.0,4.125,0.0]]` |
 | `cs_i64_regular_2x4` | Count Sketch i64, RegularPath | `04 00` | 2×4 row-major `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]` |
+| `cs_i64_regular_2x4_admission` | Count Sketch i64, RegularPath, sampled | `04 00` | the `cs_i64_regular_2x4` matrix; `admission_rate=0.25` |
 | `cs_i64_fast_2x4` | Count Sketch i64, FastPath | `04 00` | same matrix — differs from the above only by `mode` |
 | `cs_i32_regular_2x4` | Count Sketch i32, RegularPath | `04 00` | same matrix — differs from the first only by `counter_type` |
 | `cs_f64_fast_2x4` | Count Sketch f64, FastPath | `04 00` | 2×4 row-major `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]` |
@@ -59,6 +62,7 @@ that decoding Coco checks each key's placement against its hash.
 | `kll_dynamic_i64_k200` | KLLDynamic i64, k=200 | `06 01` | `[0, 1, -1, 127, -32, 128, -33, 255, -128, 256, -129, 65535, -32768, 65536, -32769, 4294967295, -2147483648, 4294967296, -2147483649, i64::MAX, i64::MIN]` in that order, compaction seed 42 (not in metadata) |
 | `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; empty negative store at offset `0`; `zero_count=0`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
 | `ddsketch_signed_a001` | DDSketch, α=0.01, signed | `05 00` | `metadata_version` 1; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7`; `sum=2523.90625, min=-0.016, max=515.0` |
+| `ddsketch_signed_a001_admission` | DDSketch, α=0.01, signed, sampled | `05 00` | the `ddsketch_signed_a001` state; `admission_rate=0.125` |
 | `ddsketch_empty_a001` | DDSketch, α=0.01, empty | `05 00` | `metadata_version` 1; empty stores at offset `0`; `zero_count=0`; `sum=0.0, min=+inf, max=-inf` |
 | `ddsketch_signed_a001_delta` | DDSketch delta, α=0.01 | `05 80` | indices `[-300,-100,-5,7,200,400]`, deltas `[1,127,128,256,65536,4294967296]`; negative indices `[-208,-33,-1,0,130,1000]`, negative deltas `[2,3,3,1,3,1]`; `zero_count=9`; merged into `ddsketch_signed_a001` gives positive buckets `{-300:1, -100:127, -5:128, 7:256, 200:65536, 310:3, 312:2, 400:4294967296}`, negative buckets `{-208:7, -207:1, -33:3, -1:3, 0:1, 130:3, 1000:1}`, `zero_count=16`, `min=-r(1000)`, `max=r(400)`, where `r(k) = 1.01·γ^k` |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `heap_size=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
@@ -153,6 +157,11 @@ deltas span positive fixint / uint8 / uint16 / uint32 / uint64. Merged, each
 bucket's representative `r(k) = (1 + α)·γ^k`, negated in the negative store, is
 folded into `sum` (as `r·count`), `min` and `max`, positive store first, in
 payload order.
+
+The four `_admission` fixtures each hold the state of the fixture they are
+named after, and their metadata is that fixture's map with one more key,
+`admission_rate`, last, as float64. The payloads are byte-identical to that
+fixture's. `0.1` is the nearest float64, `3fb999999999999a`.
 
 The CMSHeap fixtures set the matrix and the heap entries directly. The integer
 ones reuse the Count-Min i64 matrix; between them they cover two counter types,
@@ -251,7 +260,8 @@ and four bytes;
 The fixtures cover twenty-eight `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
 Count Sketch and its delta, CSHeap and its delta, DDSketch and its delta, both KLL variants (compact and dynamic),
 Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
-and DeltaResult. Every other
+and DeltaResult. The `admission_rate` key is covered on the HLL Classic,
+Count-Min, Count Sketch and DDSketch states, not on a delta. Every other
 `kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
 UniformSampling, KMV, UnivMon Optimized, UnivMon-Q, ExponentialHistogram and
 EHSketchList — has **no fixture**. The spec fixes their bytes; nothing here checks them.
