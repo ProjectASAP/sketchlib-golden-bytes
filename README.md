@@ -56,8 +56,8 @@ that decoding Coco checks each key's placement against its hash.
 | `cs_f64_fast_2x4` | Count Sketch f64, FastPath | `04 00` | 2×4 row-major `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]` |
 | `cs_i64_regular_2x4_delta` | Count Sketch i64 delta, RegularPath, 2×4 | `04 80` | indices `[0,1,2,4,6,7]`, deltas `[-32,-128,255,-129,65535,-2147483649]`; merged into `cs_i64_regular_2x4` gives `[[-32,-1,383,65536],[-130,-33,32767,-4294967297]]` |
 | `cs_f64_fast_2x4_delta` | Count Sketch f64 delta, FastPath, 2×4 | `04 80` | indices `[1,3,5,7]`, deltas `[-0.75,2.25,0.5,1e300]`; merged into `cs_f64_fast_2x4` gives `[[0.0,-0.75,1.5,0.0],[127.0,-32768.0,0.125,0.0]]` |
-| `kll_f64_k200` | KLL f64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
-| `kll_i64_k200` | KLL i64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `seed`) |
+| `kll_f64_k200` | KLL f64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `compaction_seed`) |
+| `kll_i64_k200` | KLL i64, k=200 | `06 00` | integers `1..=50`, compaction seed 42 (recorded in metadata as `compaction_seed`) |
 | `kll_dynamic_f64_k200` | KLLDynamic f64, k=200 | `06 01` | `[2.5, -1.0, 0.0, 1e300, -0.125, 42.0, 3.0e-5]` in that order, compaction seed 42 (not in metadata) |
 | `kll_dynamic_i64_k200` | KLLDynamic i64, k=200 | `06 01` | `[0, 1, -1, 127, -32, 128, -33, 255, -128, 256, -129, 65535, -32768, 65536, -32769, 4294967295, -2147483648, 4294967296, -2147483649, i64::MAX, i64::MIN]` in that order, compaction seed 42 (not in metadata) |
 | `ddsketch_positive_a001` | DDSketch, α=0.01, positive only | `05 00` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; empty negative store at offset `0`; `zero_count=0`; `sum=2181071000.0, min=0.453125, max=0.5078125` |
@@ -69,12 +69,17 @@ that decoding Coco checks each key's placement against its hash.
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `heap_size=3`; heap `{-1:7, -129:7, 4294967296:3}` |
 | `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `heap_size=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
 | `cmsheap_i64_regular_2x3_strtie` | CMSHeap i64, RegularPath, `string` keys | `03 00` | same matrix; `heap_size=5`; heap `{"hot":9, "b":5, "aa":5, "Z":5, "a":5}` |
+| `cmsheap_i64_regular_2x3_tuplekeys` | CMSHeap i64, RegularPath, `bytes` tuple keys | `03 00` | same matrix; `heap_size=5`; heap `{["us-east",443,true]:300, ["us-east",80,null]:300, [null,-1,2.5]:65536, ["",i64::MIN,-0.0]:1, ["é",0,NaN,false]:127}` |
 | `cmsheap_i64_regular_2x3_empty` | CMSHeap i64, RegularPath, empty heap | `03 00` | same matrix; `heap_size=4`; no entries |
 | `cmsheap_f64_fast_2x3_f64keys` | CMSHeap f64, FastPath, `f64` keys | `03 00` | the Count-Min f64 matrix `[[0.0,1.5,2.25],[3.75,4.125,5.0625]]`; `heap_size=6`; heap `{2.0:+inf, 1.5:300.25, -0.5:300.25, 8.0:0.0, 7.0:-0.0, 9.0:-inf}` |
 | `cmsheap_i64_regular_2x3_delta` | CMSHeap i64 delta, RegularPath, 2×3, `i64` keys | `03 80` | indices `[0,1,2,4,5]`, deltas `[127,-1,-33,-32769,4294967296]`; `heap_size=5`; heap `{-1:4295032832, 7:128, -129:128}`; merged into `cmsheap_i64_regular_2x3_strkeys` gives `[[127,0,94],[128,-32469,4295032832]]` and the delta's heap |
 | `csheap_i64_regular_2x4_strkeys` | CSHeap i64, RegularPath, `string` keys | `0a 00` | the Count Sketch 2×4 matrix `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`; `heap_size=5`; heap `{"alpha":4294967296, "beta":127, "delta":127, "gamma":-33}` |
+| `csheap_i64_regular_2x4_i64tie` | CSHeap i64, RegularPath, `i64` keys | `0a 00` | the Count Sketch 2×4 matrix; `heap_size=6`; heap `{2:9, -1:-3, 1:-3, 0:-3, i64::MIN:-3, -129:-40}` |
+| `csheap_i64_regular_2x4_tuplekeys` | CSHeap i64, RegularPath, `bytes` tuple keys | `0a 00` | the Count Sketch 2×4 matrix; `heap_size=6`; heap `{["us-east",443,true]:127, [null,-1,2.5]:-33, ["",i64::MIN,-0.0]:127, ["é",0,NaN,false]:65536}` |
 | `csheap_f64_fast_2x4_strkeys` | CSHeap f64, FastPath, `string` keys | `0a 00` | the Count Sketch f64 matrix `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]`; `heap_size=4`; heap `{"alpha":63.5625, "aa":-0.75, "beta":-0.75, "gamma":-16384.25}` |
 | `csheap_i64_regular_2x4_delta` | CSHeap i64 delta, RegularPath, 2×4, `i64` keys | `0a 80` | indices `[0,1,2,4,6,7]`, deltas `[-32,-128,255,-129,65535,-2147483649]`; `heap_size=5`; heap `{-1:65536, 7:-33, -129:-4294967297}`; merged into `csheap_i64_regular_2x4_strkeys` gives `[[-32,-1,383,65536],[-130,-33,32767,-4294967297]]` and the delta's heap |
+| `cmsspacesaving_i64_regular_2x3_strkeys` | CMSSpaceSaving i64, RegularPath, `string` keys | `1e 00` | the Count-Min i64 matrix `[[0,1,127],[128,300,65536]]`; `capacity=4`; summary `(key, count, error)` `{("hot",300,0), ("warm",128,0), ("aa",7,1), ("b",7,0)}`, `total=442`, `discarded_max=1` |
+| `csspacesaving_f64_fast_2x4_i64keys` | CSSpaceSaving f64, FastPath, `i64` keys | `1f 00` | the Count Sketch f64 matrix `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]`; `capacity=3`; summary `{(-1,65536,0), (7,6,5), (i64::MIN,6,0)}`, `total=65548`, `discarded_max=5` |
 | `hydra_kll_2x2_k200` | Hydra, KLL counter (k=200, m=8), schema `["region","service"]` | `07 00` | 2×2 grid, row-major cells: `[1.0..=5.0]` seed 1, empty seed 2, `[2.5, -1.0, 0.0, 1e300, -0.125]` seed 3, `[3.0e-5]` seed 4; each coin is `[seed, 0, 0]` |
 | `hydra_cm_2x2_counter_2x2` | Hydra, Count-Min counter (2×2 i32, FastPath), same schema | `07 01` | 2×2 grid, row-major cells: `[[0,1],[127,128]]`, `[[255,256],[300,65535]]`, `[[65536,1000000],[2147483647,0]]`, all zero |
 | `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
@@ -91,6 +96,17 @@ that decoding Coco checks each key's placement against its hash.
 | `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
 | `delta_result_strings` | DeltaResult | `08 80` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
 | `delta_result_empty` | DeltaResult, empty | `08 80` | added `{}`; removed `{}` |
+| `kmv_k8` | KMV, k=8 | `0e 00` | digests `[1, 127, 128, 65535, 4294967296, 0xfedcba9876543210]` |
+| `bloom_regular_3x128` | Bloom, RegularPath, 3 slices of 128 bits | `17 00` | words row-major `[1, 2^63, 0, 0xff, u64::MAX, 0x10000]`; `inserted=300` |
+| `bloom_fast_5x32` | Bloom, FastPath, 5 slices of 32 bits | `17 00` | words `[1, 0x80000000, 0, 0xffffffff, 0x10000]`; `inserted=9` |
+| `space_saving_i64_c8` | Space-Saving, `i64` keys, capacity 8 | `18 00` | `(key, count, error)`: `(-1,70000,0)`, `(300,9,2)`, `(0,5,0)`, `(1,5,1)`, `(i64::MIN,5,4)`, `(-129,5,0)`; `total=70030`, `discarded_max=4` |
+| `space_saving_bytes_c3` | Space-Saving, `bytes` keys, capacity 3 | `18 00` | `(ff 00, 9, 0)`, `("", 4, 1)`, `("ab", 4, 0)`; `total=20`, `discarded_max=3` |
+| `uniform_sampling_r0p25` | UniformSampling, rate 0.25 | `0d 00` | `(priority, value)`: `(3,-0.0)`, `(3,0.0)`, `(2^63,1e300)`, `(u64::MAX,NaN)`; `total_seen=20`, `rng_state=0x0123456789abcdef` |
+| `univmon_optimized_l5_e2_3x8_1x4_h6` | UnivMon Optimized, 5 layers, 2 elephant layers of 3×8, mouse 1×4, heap 6, `string` keys | `11 00` | nonzero cells `(row, col)=value`: layer 0 `(0,1)=127, (0,2)=-1, (0,5)=128, (0,7)=-33, (1,0)=65536, (1,7)=-32768, (2,6)=300`; layer 1 `(0,0)=5, (1,2)=-3, (2,7)=2`; layer 2 `(0,1)=4, (0,3)=-2`; layer 3 `(0,0)=1`; each row's `l2` its sum of squares; heaps `{"alpha":40, "beta":7, "gamma":7}`, `{"delta":3}`, `{}`, `{"eps":1}`, `{}`; total weight 70, unset mode, every layer complete |
+| `univmon_q_i32_l3_c8_r3` | UnivMon-Q, 3 layers, `top_layer_cols=8` halving every layer, 3 rows, `i32`, heap 2, 3 ordered samples, seed index 5 | `1a 00` | `counters[i]` over layer runs of 24, 12 and 6 cells: `P[(5·layer + 3·row + col) mod 14]`, `P = [0,1,-1,127,-128,32767,-32769,i32::MAX,i32::MIN,65536,-2,300,0,9]`; candidates `{o(-2.5):4, o(3.0):2}`, `{o(0.5):1, o(5.0):3}`, `{o(0.0):2}`; `ever_evicted=[false,true,false]`; `count=12`, `min=o(-2.5)`, `max=o(5.0)`; `source_id=7`, `next_sequence=12`; occurrences `(1, u64::MAX, o(3.0))`, `(0x0123456789abcdef, 0, o(0.0))`, `(0xfedcba9876543210, 0x42, o(-2.5))`; `o(x)` is the order-preserving `u64` of `x` |
+| `ehsketchlist_cm_i32_fast_2x4` | EHSketchList, Count-Min i32 FastPath 2×4 | `14 00` | `[[127,-1,0,65536],[-32768,128,i32::MAX,i32::MIN]]` |
+| `ehsketchlist_ddsketch_a001` | EHSketchList, DDSketch | `14 00` | the `ddsketch_signed_a001` state |
+| `eh_w100_k2_cm_2x4` | ExponentialHistogram, window 100, k 2, Count-Min i32 FastPath 2×4 | `13 00` | buckets `[[1,0,2,0],[0,3,0,0]]` size 3 over `[10,30]` and `[[0,0,0,1],[1,0,0,0]]` size 1 over `[40,40]`; prototype all zero |
 
 The HLL fixtures set the register bytes directly. Each estimator has a P12 and
 a P14 fixture; the P14 set holds register value 51, the largest a P14 register
@@ -135,7 +151,7 @@ those retained samples. `k=200` keeps every input below the level-0 capacity, so
 no compaction fires (`num_levels = 1`, `levels = [0, n]`, items in input order)
 and the state is fully deterministic. The fixed compaction seed (42) pins the
 carried coin state, `[42, 0, 0]`. Compact KLL records the seed in metadata;
-KLLDynamic never emits the `seed` key, so its metadata differs only by omitting
+KLLDynamic never emits the `compaction_seed` key, so its metadata differs only by omitting
 it. The two variants share the payload shape and differ by `kind_id`. The
 dynamic f64 items are negative, zero and fractional; the dynamic i64 items span
 positive fixint / uint8 / uint16 / uint32 / uint64 and negative fixint / int8 /
@@ -180,11 +196,19 @@ The CMSHeap delta fixture carries the metadata block of
 `cmsheap_i64_regular_2x3_strkeys` except `key_type`, `"i64"` for its own heap,
 under kind_id `03 80`. Its cells are the Count-Min i64 delta's.
 
+The `tuplekeys` fixtures hold keys made of typed columns, each a `bytes` key
+in the spec's tuple key encoding (Section 2): per column a tag byte, then an
+8-byte big-endian `i64` or `f64`, or a big-endian `u32` length and UTF-8.
+`-0.0` is written as `0.0` and `NaN` as `0x7ff8000000000000`. Ties fall to the
+bytes: the two `["us-east", …]` keys at 300 differ first in the `i64` column.
+
 The CSHeap state fixtures set the Count Sketch matrix and the heap entries
 directly, so their `counts` arrays are byte-identical to the Count Sketch
 fixtures'. The i64 one's heap is one entry short of `heap_size` and holds a
 count tie (`beta` before `delta`); its heap counts span uint64 / positive
-fixint / negative int8: a CSHeap heap count is a signed median.
+fixint / negative int8: a CSHeap heap count is a signed median. The `i64tie`
+one ties four keys at a negative count, emitted `0, 1, i64::MIN, -1` as in
+`cmsheap_i64_regular_2x3_i64tie`.
 
 The f64 CSHeap fixture carries float64 heap counts, the unrounded signed median:
 `-16384.25` is a negative one and `63.5625` a fractional one. Its `-0.75` tie
@@ -194,6 +218,15 @@ The CSHeap delta fixture carries the metadata block of
 `csheap_i64_regular_2x4_strkeys` except `key_type`, `"i64"` for its own heap,
 under kind_id `0a 80`. Its cells are the Count Sketch i64 delta's; its heap
 counts span uint32 / negative int8 / int64.
+
+The CMSSpaceSaving and CSSpaceSaving fixtures set the matrix directly and
+build the summary by weighted inserts, whose triples do not depend on the hash.
+Each summary is full and has displaced one key, so it carries a non-zero error
+and `discarded_max`; `rows`, `cols` and `capacity` are pairwise distinct. The
+count ties fall to the keys: `"aa"` precedes `"b"`, and `7` precedes
+`i64::MIN`, whose two's-complement bits read higher. The summary counts span
+positive fixint / uint8 / uint16 / uint32 and the `i64` keys negative fixint /
+positive fixint / int64.
 
 The Hydra fixtures set every cell's state directly, so neither the subkeys nor
 the values are hashed: the matrix cells from storage, the HLL registers by
@@ -255,16 +288,47 @@ key), a 31-byte fixstr and a 32-byte str8, and UTF-8 code points of two, three
 and four bytes;
 `"～"` (U+FF5E) precedes `"😀"` (U+1F600), the reverse of their UTF-16 order.
 
+The KMV, Bloom, Space-Saving and UniformSampling fixtures set their state
+directly: KMV's digests are inserted as digests, and the other three go through
+their serde form. KMV's last digest is above 2^63 and still a uint64. Bloom
+column `c` of row `r` is bit `c mod 64` of word `r·ceil(cols/64) + c/64`; the
+3×128 grid has two words per row, and the 5×32 grid one, whose top 32 bits are
+padding and zero. The Space-Saving `i64` fixture holds fewer counters than its
+capacity, and its count-5 tie emits by two's-complement bits: `0, 1, i64::MIN,
+-129`. The `bytes` fixture is full and its keys are `bin`, one of them not
+UTF-8. The UniformSampling priority-3 tie orders `-0.0` before `0.0`, and the
+`NaN` sample is `0x7ff8000000000000`.
+
+The UnivMon Optimized fixture sets counters by deltas at named cells and heap
+entries by explicit pairs, as the UnivMon fixtures do. Its seven layout values
+(5, 2, 3, 8, 1, 4, 6) are pairwise distinct. Its mode is unset and every layer
+complete; the UnivMon fixtures cover mode 1 and an incomplete layer through the
+same payload.
+
+The UnivMon-Q state is not reachable through an update stream: its counters are
+fixed values, not the sum of its observations. Each candidate key hashes into
+the layer it sits in, because the decoder checks it. Layer widths are 8, 4 and
+2. Candidates ascend by key within a layer, and occurrences by `(priority_high,
+priority_low, key)`.
+
+The EHSketchList and ExponentialHistogram fixtures carry each nested sketch's
+metadata and payload blocks byte for byte: the DDSketch triple holds
+`ddsketch_signed_a001`'s blocks, and each Count-Min block is the `0x02 0x00`
+encoding of a 2×4 `i32` FastPath matrix.
+
 ## Coverage
 
-The fixtures cover twenty-eight `kind_id`s: HLL's three estimators (at P12 and P14) and the Classic and Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta,
-Count Sketch and its delta, CSHeap and its delta, DDSketch and its delta, both KLL variants (compact and dynamic),
-Hydra's five counter variants, Coco, Elastic, UnivMon, CountL2HH, SetAggregator
-and DeltaResult. The `admission_rate` key is covered on the HLL Classic,
-Count-Min, Count Sketch and DDSketch states, not on a delta. Every other
-`kind_id` the spec's registry marks *implemented* — Bloom, Space-Saving,
-UniformSampling, KMV, UnivMon Optimized, UnivMon-Q, ExponentialHistogram and
-EHSketchList — has **no fixture**. The spec fixes their bytes; nothing here checks them.
+The fixtures cover thirty-eight `kind_id`s, every one the spec's registry marks
+*implemented*: HLL's three estimators (at P12 and P14) and the Classic and
+Ertl-MLE deltas, Count-Min and its delta, CMSHeap and its delta, Count Sketch
+and its delta, CSHeap and its delta, CMSSpaceSaving, CSSpaceSaving, DDSketch and its delta, both KLL variants
+(compact and dynamic), Hydra's five counter variants, Coco, Elastic,
+UniformSampling, KMV, UnivMon, UnivMon Optimized, ExponentialHistogram,
+EHSketchList, Bloom, Space-Saving, CountL2HH, UnivMon-Q, SetAggregator and
+DeltaResult. The `admission_rate` key is covered on the HLL Classic,
+Count-Min, Count Sketch and DDSketch states, not on a delta. EHSketchList is
+covered for its Count-Min and DDSketch variants, standalone, and for Count-Min
+inside an ExponentialHistogram.
 
 ## Changing a fixture
 
