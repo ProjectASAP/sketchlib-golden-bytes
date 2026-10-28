@@ -309,13 +309,18 @@ encoding of a pyramid with no keys, whose `key_type` is `u64`. The fixtures
 cover `update_mode` 0 (unset) and 1 (standard), not 2 (terminal-only): only a
 hashed insert selects that mode.
 
-The CountL2HH fixture sets the counts, the per-row `l2` accumulators and the
-seed index directly, through the sketch's serde form; no key is hashed. Each
-`l2` is set apart from the counts, since it is carried state rather than the
-row's sum of squares. The cells span positive fixint / uint8 / uint16 and
-negative fixint / int8 / int16 / int32 / int64 down to `i64::MIN`; the `l2`
-values are a uint32 and `i64::MAX`, the accumulator's saturation value, a
-uint64. Between them every msgpack integer width appears.
+The retired CountL2HH fixture `count_l2hh_2x4_seed7` (`19 00`) sets the
+counts, the per-row `l2` accumulators and the seed index directly, through the
+sketch's serde form; no key is hashed. Its `l2` was set apart from the counts,
+when it was carried state: row 0's `65536` is not that row's sum of squares. The
+cells span positive fixint / uint8 / uint16 and negative fixint / int8 / int16 /
+int32 / int64 down to `i64::MIN`; the `l2` values are a uint32 and `i64::MAX`,
+the accumulator's saturation value, a uint64. Between them every msgpack integer
+width appears.
+
+The current `count_l2hh_2x4_seed7_no_l2` (`19 01`) carries the same counts and
+no `l2`, so it covers positive fixint / uint8 / uint16 and negative fixint /
+int8 / int16 / int32 / int64; uint32 and uint64 appear only in the retired twin.
 
 The UnivMon, UnivMon Optimized, CountL2HH and Hydra-over-UnivMon fixtures above
 without the `_no_l2` suffix carry the retired kinds `10 00`, `11 00`, `19 00`
