@@ -104,6 +104,8 @@ that decoding Coco checks each key's placement against its hash.
 | `kmv_k8` | KMV, k=8 | `0e 00` | digests `[1, 127, 128, 65535, 4294967296, 0xfedcba9876543210]` |
 | `bloom_regular_3x128` | Bloom, RegularPath, 3 slices of 128 bits | `17 00` | words row-major `[1, 2^63, 0, 0xff, u64::MAX, 0x10000]`; `inserted=300` |
 | `bloom_fast_5x32` | Bloom, FastPath, 5 slices of 32 bits | `17 00` | words `[1, 0x80000000, 0, 0xffffffff, 0x10000]`; `inserted=9` |
+| `bloom_bits_regular_3x128` | Bloom, RegularPath, 3 slices of 128 bits | `17 01` | the `bloom_regular_3x128` words, no `inserted` |
+| `bloom_bits_fast_5x32` | Bloom, FastPath, 5 slices of 32 bits | `17 01` | the `bloom_fast_5x32` words, no `inserted` |
 | `space_saving_i64_c8` | Space-Saving, `i64` keys, capacity 8 | `18 00` | `(key, count, error)`: `(-1,70000,0)`, `(300,9,2)`, `(0,5,0)`, `(1,5,1)`, `(i64::MIN,5,4)`, `(-129,5,0)`; `total=70030`, `discarded_max=4` |
 | `space_saving_bytes_c3` | Space-Saving, `bytes` keys, capacity 3 | `18 00` | `(ff 00, 9, 0)`, `("", 4, 1)`, `("ab", 4, 0)`; `total=20`, `discarded_max=3` |
 | `uniform_sampling_r0p25` | UniformSampling, rate 0.25 | `0d 00` | `(priority, value)`: `(3,-0.0)`, `(3,0.0)`, `(2^63,1e300)`, `(u64::MAX,NaN)`; `total_seen=20`, `rng_state=0x0123456789abcdef` |
@@ -313,6 +315,14 @@ capacity, and its count-5 tie emits by two's-complement bits: `0, 1, i64::MIN,
 -129`. The `bytes` fixture is full and its keys are `bin`, one of them not
 UTF-8. The UniformSampling priority-3 tie orders `-0.0` before `0.0`, and the
 `NaN` sample is `0x7ff8000000000000`.
+
+The `bloom_regular_3x128` and `bloom_fast_5x32` fixtures carry the retired kind
+`17 00`, whose payload `[words, inserted]` also holds an insert counter; they
+stay as decode-only fixtures for bytes written before the change. The current
+kind `17 01` carries `[words]` alone, so each `bloom_bits_*` fixture is its twin
+with `inserted` dropped: a decoder reads a retired fixture into the same grid
+and re-encodes it as its `bloom_bits_*` twin. An insert count is not Bloom
+state; a separate exact count keeps it.
 
 The UnivMon Optimized fixture sets counters by deltas at named cells and heap
 entries by explicit pairs, as the UnivMon fixtures do. Its seven layout values
