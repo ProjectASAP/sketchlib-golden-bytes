@@ -92,13 +92,18 @@ that decoding Coco checks each key's placement against its hash.
 | `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
 | `hydra_hll_1x2_p14` | Hydra, HLL Ertl-MLE counter (P14), same schema | `07 03` | 1×2 grid; cell 0 registers `[0]=1, [1]=7, [100]=42, [16383]=3`; cell 1 `[0]=2, [8192]=51`; all others 0 |
 | `hydra_univmon_1x2` | Hydra, UnivMon counter (2 layers of 1×2, heap 2, `u64` keys), same schema | `07 04` | 1×2 grid; cell 0: layer 0 counts `[5,-3]`, l2 `34`, heap `{7:5, 300:2}`, incomplete; layer 1 counts `[0,2]`, l2 `4`, heap `{4294967296:2}`, complete; total weight 7, standard mode; cell 1 empty |
+| `hydra_univmon_1x2_no_l2` | Hydra, UnivMon counter, same grid | `07 05` | the `hydra_univmon_1x2` grid; each cell's pyramid without `l2` |
 | `coco_3x7` | Coco, 3×7 table | `0c 00` | 15 occupied buckets `(row, col): key=value`: `(0,0) "uint32-min"=65536`, `(0,1) "uint16-max"=65535`, `(0,2) "fixint-max"=127`, `(0,3) ""=1`, `(0,4) "uint8-max"=255`, `(0,5) "emoji-😀"=5`, `(1,0) "uint16-min"=256`, `(1,1) "str8-min-32-bytes-0123456789abcd"=3`, `(1,2) "uint8-min"=128`, `(1,3) "clé-ünïcode-流量"=4`, `(1,4) "fixstr-max-31-bytes-0123456789a"=2`, `(1,5) "uint64-min"=4294967296`, `(1,6) "zero"=0`, `(2,1) "uint64-max"=u64::MAX`, `(2,5) "uint32-max"=4294967295`; the other 6 unoccupied |
 | `elastic_4b_2x4` | Elastic, 4 heavy buckets, light 2×4 i32 RegularPath | `0b 00` | heavy `(flow_id, vote+, vote-, eviction)`: free with the flag set, `("10.0.0.1:443>192.168.10.20:5123",127,128,false)`, `("",1,65535,true)`, `("10.0.0.1:443>192.168.10.20:51234",2147483647,256,true)`; light row-major `[[0,255,65536,2147483647],[-1,-33,-32768,-2147483648]]`; `stale_copies=false` |
 | `elastic_4b_2x4_stale` | Elastic, same geometry | `0b 00` | same state — differs from the above only by `stale_copies=true` |
 | `univmon_str_l3_2x4_h5` | UnivMon, 3 layers of 2×4, heap 5, `string` keys | `10 00` | layer 0 counts `[[0,127,128,65536],[-1,-33,-32768,-2147483648]]`, l2 `[4294999809, 4611686019501130818]`, heap `{"alpha":65536, "beta":300, "delta":128}`, complete; layer 1 counts `[[3,-2,0,1],[0,0,5,-4]]`, l2 `[14, 41]`, heap `{"gamma":5}`, incomplete; layer 2 counts `[[0,7,0,0],[-6,0,0,0]]`, l2 `[49, 36]`, heap `{"epsilon":9, "zeta":2}`, complete; total weight 70000, standard mode |
 | `univmon_i64_l3_2x4_h5` | UnivMon, same shape, `i64` keys | `10 00` | same layers — differs from the above only by `key_type` and keys: layer 0 heap `{i64::MIN:65536, -1:300, -129:128}`, layer 1 heap `{128:5}`, layer 2 heap `{4294967296:9, 7:2}` |
 | `univmon_empty_l3_2x4_h5` | UnivMon, same shape | `10 00` | freshly constructed: all counts and l2 zero, heaps empty, every layer complete, total weight 0, unset mode; `key_type` `u64` |
+| `univmon_str_l3_2x4_h5_no_l2` | UnivMon, 3 layers of 2×4, heap 5, `string` keys | `10 01` | the `univmon_str_l3_2x4_h5` state; the payload carries no `l2` |
+| `univmon_i64_l3_2x4_h5_no_l2` | UnivMon, same shape, `i64` keys | `10 01` | the `univmon_i64_l3_2x4_h5` state; no `l2` |
+| `univmon_empty_l3_2x4_h5_no_l2` | UnivMon, same shape | `10 01` | the `univmon_empty_l3_2x4_h5` state; no `l2` |
 | `count_l2hh_2x4_seed7` | CountL2HH, 2×4, seed index 7 | `19 00` | counts row-major `[[127,128,65535,-32768],[-32,-33,-2147483648,i64::MIN]]`; l2 `[65536, i64::MAX]` |
+| `count_l2hh_2x4_seed7_no_l2` | CountL2HH, 2×4, seed index 7 | `19 01` | the same counts; payload `[counts]` alone (each row's `l2` is recomputed: `[5368610562, i64::MAX]`) |
 | `set_aggregator_strings` | SetAggregator | `08 00` | `{"", "ab", "abc", "abcdefghijklmnopqrstuvwxyz012345", "api", "fixstr-max-31-bytes-0123456789a", "web", "é", "中", "～", "😀"}` |
 | `set_aggregator_empty` | SetAggregator, empty | `08 00` | `{}` |
 | `delta_result_strings` | DeltaResult | `08 80` | added `{"queue", "été", "😀"}`; removed `{"", "cache", "db", "中"}` |
@@ -114,6 +119,7 @@ that decoding Coco checks each key's placement against its hash.
 | `space_saving_nototal_bytes_c3` | Space-Saving, `bytes` keys, capacity 3, no `total` | `18 01` | the `space_saving_bytes_c3` triples; `discarded_max=3` |
 | `uniform_sampling_r0p25` | UniformSampling, rate 0.25 | `0d 00` | `(priority, value)`: `(3,-0.0)`, `(3,0.0)`, `(2^63,1e300)`, `(u64::MAX,NaN)`; `total_seen=20`, `rng_state=0x0123456789abcdef` |
 | `univmon_optimized_l5_e2_3x8_1x4_h6` | UnivMon Optimized, 5 layers, 2 elephant layers of 3×8, mouse 1×4, heap 6, `string` keys | `11 00` | nonzero cells `(row, col)=value`: layer 0 `(0,1)=127, (0,2)=-1, (0,5)=128, (0,7)=-33, (1,0)=65536, (1,7)=-32768, (2,6)=300`; layer 1 `(0,0)=5, (1,2)=-3, (2,7)=2`; layer 2 `(0,1)=4, (0,3)=-2`; layer 3 `(0,0)=1`; each row's `l2` its sum of squares; heaps `{"alpha":40, "beta":7, "gamma":7}`, `{"delta":3}`, `{}`, `{"eps":1}`, `{}`; total weight 70, unset mode, every layer complete |
+| `univmon_optimized_l5_e2_3x8_1x4_h6_no_l2` | UnivMon Optimized, same shape | `11 01` | the `univmon_optimized_l5_e2_3x8_1x4_h6` state; no `l2` |
 | `univmon_q_i32_l3_c8_r3` | UnivMon-Q, 3 layers, `top_layer_cols=8` halving every layer, 3 rows, `i32`, heap 2, 3 ordered samples, seed index 5 | `1a 00` | `counters[i]` over layer runs of 24, 12 and 6 cells: `P[(5·layer + 3·row + col) mod 14]`, `P = [0,1,-1,127,-128,32767,-32769,i32::MAX,i32::MIN,65536,-2,300,0,9]`; candidates `{o(-2.5):4, o(3.0):2}`, `{o(0.5):1, o(5.0):3}`, `{o(0.0):2}`; `ever_evicted=[false,true,false]`; `count=12`, `min=o(-2.5)`, `max=o(5.0)`; `source_id=7`, `next_sequence=12`; occurrences `(1, u64::MAX, o(3.0))`, `(0x0123456789abcdef, 0, o(0.0))`, `(0xfedcba9876543210, 0x42, o(-2.5))`; `o(x)` is the order-preserving `u64` of `x` |
 | `ehsketchlist_cm_i32_fast_2x4` | EHSketchList, Count-Min i32 FastPath 2×4 | `14 00` | `[[127,-1,0,65536],[-32768,128,i32::MAX,i32::MIN]]` |
 | `ehsketchlist_ddsketch_a001` | EHSketchList, DDSketch | `14 00` | the `ddsketch_signed_a001` state |
@@ -310,6 +316,17 @@ row's sum of squares. The cells span positive fixint / uint8 / uint16 and
 negative fixint / int8 / int16 / int32 / int64 down to `i64::MIN`; the `l2`
 values are a uint32 and `i64::MAX`, the accumulator's saturation value, a
 uint64. Between them every msgpack integer width appears.
+
+The UnivMon, UnivMon Optimized, CountL2HH and Hydra-over-UnivMon fixtures above
+without the `_no_l2` suffix carry the retired kinds `10 00`, `11 00`, `19 00`
+and `07 04`, whose payloads also hold each row's `l2` accumulator; they stay as
+decode-only fixtures for bytes written before the change. The current kinds
+`10 01`, `11 01`, `19 01` and `07 05` drop `l2`, since it is each row's sum of
+squared counters (saturated at `i64::MAX`) and the decoder recomputes it. Each
+`*_no_l2` fixture is its twin decoded and re-encoded: a decoder reads a retired
+fixture, drops `l2`, and re-encodes it as the twin. The retired CountL2HH
+fixture's row 0 `l2` (65536) is not that row's sum of squares; it is dropped
+like any other.
 
 The SetAggregator and DeltaResult fixtures set the string sets directly; neither
 type hashes. Each array is in ascending UTF-8 byte order. The strings cover the
