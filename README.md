@@ -65,6 +65,11 @@ that decoding Coco checks each key's placement against its hash.
 | `ddsketch_signed_a001_admission` | DDSketch, α=0.01, signed, sampled | `05 00` | the `ddsketch_signed_a001` state; `admission_rate=0.125` |
 | `ddsketch_empty_a001` | DDSketch, α=0.01, empty | `05 00` | `metadata_version` 1; empty stores at offset `0`; `zero_count=0`; `sum=0.0, min=+inf, max=-inf` |
 | `ddsketch_signed_a001_delta` | DDSketch delta, α=0.01 | `05 80` | indices `[-300,-100,-5,7,200,400]`, deltas `[1,127,128,256,65536,4294967296]`; negative indices `[-208,-33,-1,0,130,1000]`, negative deltas `[2,3,3,1,3,1]`; `zero_count=9`; merged into `ddsketch_signed_a001` gives positive buckets `{-300:1, -100:127, -5:128, 7:256, 200:65536, 310:3, 312:2, 400:4294967296}`, negative buckets `{-208:7, -207:1, -33:3, -1:3, 0:1, 130:3, 1000:1}`, `zero_count=16`, `min=-r(1000)`, `max=r(400)`, where `r(k) = 1.01·γ^k` |
+| `ddsketch_buckets_positive_a001` | DDSketch (buckets only), α=0.01, positive only | `05 01` | `metadata_version` 1; positive store `[1,0,127,128,300,65536,4294967296]` at offset `-40`; empty negative store at offset `0`; `zero_count=0` |
+| `ddsketch_buckets_signed_a001` | DDSketch (buckets only), α=0.01, signed | `05 01` | `metadata_version` 1; positive store `[3,0,2]` at offset `310`; negative store `[5,1]` at offset `-208`; `zero_count=7` |
+| `ddsketch_buckets_signed_a001_admission` | DDSketch (buckets only), α=0.01, signed, sampled | `05 01` | the `ddsketch_buckets_signed_a001` state; `admission_rate=0.125` |
+| `ddsketch_buckets_empty_a001` | DDSketch (buckets only), α=0.01, empty | `05 01` | `metadata_version` 1; empty stores at offset `0`; `zero_count=0` |
+| `ddsketch_buckets_signed_a001_delta` | DDSketch delta, α=0.01 | `05 81` | the `ddsketch_signed_a001_delta` payload under the current kind; merged into `ddsketch_buckets_signed_a001` gives the same buckets and `zero_count=16` as that fixture |
 | `cmsheap_i64_regular_2x3_strkeys` | CMSHeap i64, RegularPath, `string` keys | `03 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]`; `heap_size=5`; heap `{"hot":65536, "warm":300, "mild":300, "cold":1}` |
 | `cmsheap_i32_fast_2x3_i64keys` | CMSHeap i32, FastPath, `i64` keys | `03 00` | same matrix; `heap_size=3`; heap `{-1:7, -129:7, 4294967296:3}` |
 | `cmsheap_i64_regular_2x3_i64tie` | CMSHeap i64, RegularPath, `i64` keys | `03 00` | same matrix; `heap_size=5`; heap `{2:9, -1:5, 1:5, 0:5, i64::MIN:5}` |
@@ -106,6 +111,7 @@ that decoding Coco checks each key's placement against its hash.
 | `univmon_q_i32_l3_c8_r3` | UnivMon-Q, 3 layers, `top_layer_cols=8` halving every layer, 3 rows, `i32`, heap 2, 3 ordered samples, seed index 5 | `1a 00` | `counters[i]` over layer runs of 24, 12 and 6 cells: `P[(5·layer + 3·row + col) mod 14]`, `P = [0,1,-1,127,-128,32767,-32769,i32::MAX,i32::MIN,65536,-2,300,0,9]`; candidates `{o(-2.5):4, o(3.0):2}`, `{o(0.5):1, o(5.0):3}`, `{o(0.0):2}`; `ever_evicted=[false,true,false]`; `count=12`, `min=o(-2.5)`, `max=o(5.0)`; `source_id=7`, `next_sequence=12`; occurrences `(1, u64::MAX, o(3.0))`, `(0x0123456789abcdef, 0, o(0.0))`, `(0xfedcba9876543210, 0x42, o(-2.5))`; `o(x)` is the order-preserving `u64` of `x` |
 | `ehsketchlist_cm_i32_fast_2x4` | EHSketchList, Count-Min i32 FastPath 2×4 | `14 00` | `[[127,-1,0,65536],[-32768,128,i32::MAX,i32::MIN]]` |
 | `ehsketchlist_ddsketch_a001` | EHSketchList, DDSketch | `14 00` | the `ddsketch_signed_a001` state |
+| `ehsketchlist_ddsketch_buckets_a001` | EHSketchList, DDSketch (buckets only) | `14 00` | the `ddsketch_buckets_signed_a001` state, nested under kind_id `05 01` |
 | `eh_w100_k2_cm_2x4` | ExponentialHistogram, window 100, k 2, Count-Min i32 FastPath 2×4 | `13 00` | buckets `[[1,0,2,0],[0,3,0,0]]` size 3 over `[10,30]` and `[[0,0,0,1],[1,0,0,0]]` size 1 over `[40,40]`; prototype all zero |
 
 The HLL fixtures set the register bytes directly. Each estimator has a P12 and
@@ -173,6 +179,15 @@ deltas span positive fixint / uint8 / uint16 / uint32 / uint64. Merged, each
 bucket's representative `r(k) = (1 + α)·γ^k`, negated in the negative store, is
 folded into `sum` (as `r·count`), `min` and `max`, positive store first, in
 payload order.
+
+The `ddsketch_*` fixtures above carry the retired kinds `05 00` / `05 80`, whose
+state also holds `sum` / `min` / `max`; they stay as decode-only fixtures for
+bytes written before the change. The current kinds `05 01` / `05 81` carry the
+two stores and the zero count alone, so the `ddsketch_buckets_*` fixtures are
+the same states and delta with those scalars dropped: a decoder reads a retired
+fixture into the same stores and re-encodes it as its `ddsketch_buckets_*`
+twin. Sum, minimum and maximum are not DDSketch state; a separate exact
+aggregate keeps them.
 
 The four `_admission` fixtures each hold the state of the fixture they are
 named after, and their metadata is that fixture's map with one more key,
