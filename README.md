@@ -42,6 +42,8 @@ that decoding Coco checks each key's placement against its hash.
 | `hll_classic_p14` | HLL Classic, P14 | `01 01` | 16384 registers, set: `[0]=1, [1]=7, [8192]=42, [16383]=51` |
 | `hll_ertl_mle_p14` | HLL Ertl-MLE, P14 | `01 02` | same register pattern |
 | `hll_hip_p14` | HLL HIP, P14 | `01 03` | same registers + `hip_kxq0=16380.5, hip_kxq1=0.25, hip_est=4.125` |
+| `hll_hip_est_p12` | HLL HIP (registers and estimate), P12 | `01 04` | the `hll_hip_p12` registers + `hip_est=3.0` |
+| `hll_hip_est_p14` | HLL HIP (registers and estimate), P14 | `01 04` | the `hll_hip_p14` registers + `hip_est=4.125` |
 | `hll_classic_p14_delta` | HLL Classic delta, P14 | `01 81` | indices `[0,2,200,8192,16383]`, registers `[51,1,9,7,1]`; merged into `hll_classic_p14` gives `[0]=51, [1]=7, [2]=1, [200]=9, [8192]=42, [16383]=51` |
 | `hll_ertl_mle_p14_delta` | HLL Ertl-MLE delta, P14 | `01 82` | same delta; merged into `hll_ertl_mle_p14` gives the same registers |
 | `cms_i64_regular_2x3` | Count-Min i64, RegularPath | `02 00` | 2×3 row-major `[[0,1,127],[128,300,65536]]` |
@@ -129,6 +131,16 @@ that decoding Coco checks each key's placement against its hash.
 The HLL fixtures set the register bytes directly. Each estimator has a P12 and
 a P14 fixture; the P14 set holds register value 51, the largest a P14 register
 takes, and touches the first, a middle and the last index.
+
+The `hll_hip_p12` / `hll_hip_p14` fixtures carry the retired kind `01 03`,
+whose payload also holds `hip_kxq0` / `hip_kxq1`; they stay as decode-only
+fixtures for bytes written before the change. Those two are the sums of
+`2^-r` over the registers below 32 and of 32 or more, so a decoder recomputes
+them from the registers, and the values in these two fixtures, which no
+register state produces, are dropped. The current kind `01 04` carries the
+registers and `hip_est` alone, so the `hll_hip_est_*` fixtures are the same
+registers and estimate: a decoder reads a retired fixture and re-encodes it as
+its `hll_hip_est_*` twin.
 
 The HLL delta fixtures carry the metadata block of the P14 state fixture they
 merge into, byte for byte, under kind_id `01 81` or `01 82`. Their registers
