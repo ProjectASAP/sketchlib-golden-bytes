@@ -84,7 +84,9 @@ that decoding Coco checks each key's placement against its hash.
 | `csheap_f64_fast_2x4_strkeys` | CSHeap f64, FastPath, `string` keys | `0a 00` | the Count Sketch f64 matrix `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]`; `heap_size=4`; heap `{"alpha":63.5625, "aa":-0.75, "beta":-0.75, "gamma":-16384.25}` |
 | `csheap_i64_regular_2x4_delta` | CSHeap i64 delta, RegularPath, 2×4, `i64` keys | `0a 80` | indices `[0,1,2,4,6,7]`, deltas `[-32,-128,255,-129,65535,-2147483649]`; `heap_size=5`; heap `{-1:65536, 7:-33, -129:-4294967297}`; merged into `csheap_i64_regular_2x4_strkeys` gives `[[-32,-1,383,65536],[-130,-33,32767,-4294967297]]` and the delta's heap |
 | `cmsspacesaving_i64_regular_2x3_strkeys` | CMSSpaceSaving i64, RegularPath, `string` keys | `1e 00` | the Count-Min i64 matrix `[[0,1,127],[128,300,65536]]`; `capacity=4`; summary `(key, count, error)` `{("hot",300,0), ("warm",128,0), ("aa",7,1), ("b",7,0)}`, `total=442`, `discarded_max=1` |
+| `cmsspacesaving_nototal_i64_regular_2x3_strkeys` | CMSSpaceSaving i64, RegularPath, `string` keys, no `total` | `1e 01` | the `cmsspacesaving_i64_regular_2x3_strkeys` matrix and summary without `total`; `discarded_max=1` |
 | `csspacesaving_f64_fast_2x4_i64keys` | CSSpaceSaving f64, FastPath, `i64` keys | `1f 00` | the Count Sketch f64 matrix `[[0.0,-0.0,1.5,-2.25],[127.0,-32768.5,0.125,-1e300]]`; `capacity=3`; summary `{(-1,65536,0), (7,6,5), (i64::MIN,6,0)}`, `total=65548`, `discarded_max=5` |
+| `csspacesaving_nototal_f64_fast_2x4_i64keys` | CSSpaceSaving f64, FastPath, `i64` keys, no `total` | `1f 01` | the `csspacesaving_f64_fast_2x4_i64keys` matrix and summary without `total`; `discarded_max=5` |
 | `hydra_kll_2x2_k200` | Hydra, KLL counter (k=200, m=8), schema `["region","service"]` | `07 00` | 2×2 grid, row-major cells: `[1.0..=5.0]` seed 1, empty seed 2, `[2.5, -1.0, 0.0, 1e300, -0.125]` seed 3, `[3.0e-5]` seed 4; each coin is `[seed, 0, 0]` |
 | `hydra_cm_2x2_counter_2x2` | Hydra, Count-Min counter (2×2 i32, FastPath), same schema | `07 01` | 2×2 grid, row-major cells: `[[0,1],[127,128]]`, `[[255,256],[300,65535]]`, `[[65536,1000000],[2147483647,0]]`, all zero |
 | `hydra_cs_2x2_counter_2x2` | Hydra, Count Sketch counter (2×2 i32, FastPath), same schema | `07 02` | 2×2 grid, row-major cells: `[[0,-1],[127,-32]]`, `[[-33,128],[-128,-129]]`, `[[-32768,65536],[-32769,2147483647]]`, `[[-2147483648,1],[0,0]]` |
@@ -108,6 +110,8 @@ that decoding Coco checks each key's placement against its hash.
 | `bloom_bits_fast_5x32` | Bloom, FastPath, 5 slices of 32 bits | `17 01` | the `bloom_fast_5x32` words, no `inserted` |
 | `space_saving_i64_c8` | Space-Saving, `i64` keys, capacity 8 | `18 00` | `(key, count, error)`: `(-1,70000,0)`, `(300,9,2)`, `(0,5,0)`, `(1,5,1)`, `(i64::MIN,5,4)`, `(-129,5,0)`; `total=70030`, `discarded_max=4` |
 | `space_saving_bytes_c3` | Space-Saving, `bytes` keys, capacity 3 | `18 00` | `(ff 00, 9, 0)`, `("", 4, 1)`, `("ab", 4, 0)`; `total=20`, `discarded_max=3` |
+| `space_saving_nototal_i64_c8` | Space-Saving, `i64` keys, capacity 8, no `total` | `18 01` | the `space_saving_i64_c8` triples; `discarded_max=4` |
+| `space_saving_nototal_bytes_c3` | Space-Saving, `bytes` keys, capacity 3, no `total` | `18 01` | the `space_saving_bytes_c3` triples; `discarded_max=3` |
 | `uniform_sampling_r0p25` | UniformSampling, rate 0.25 | `0d 00` | `(priority, value)`: `(3,-0.0)`, `(3,0.0)`, `(2^63,1e300)`, `(u64::MAX,NaN)`; `total_seen=20`, `rng_state=0x0123456789abcdef` |
 | `univmon_optimized_l5_e2_3x8_1x4_h6` | UnivMon Optimized, 5 layers, 2 elephant layers of 3×8, mouse 1×4, heap 6, `string` keys | `11 00` | nonzero cells `(row, col)=value`: layer 0 `(0,1)=127, (0,2)=-1, (0,5)=128, (0,7)=-33, (1,0)=65536, (1,7)=-32768, (2,6)=300`; layer 1 `(0,0)=5, (1,2)=-3, (2,7)=2`; layer 2 `(0,1)=4, (0,3)=-2`; layer 3 `(0,0)=1`; each row's `l2` its sum of squares; heaps `{"alpha":40, "beta":7, "gamma":7}`, `{"delta":3}`, `{}`, `{"eps":1}`, `{}`; total weight 70, unset mode, every layer complete |
 | `univmon_q_i32_l3_c8_r3` | UnivMon-Q, 3 layers, `top_layer_cols=8` halving every layer, 3 rows, `i32`, heap 2, 3 ordered samples, seed index 5 | `1a 00` | `counters[i]` over layer runs of 24, 12 and 6 cells: `P[(5·layer + 3·row + col) mod 14]`, `P = [0,1,-1,127,-128,32767,-32769,i32::MAX,i32::MIN,65536,-2,300,0,9]`; candidates `{o(-2.5):4, o(3.0):2}`, `{o(0.5):1, o(5.0):3}`, `{o(0.0):2}`; `ever_evicted=[false,true,false]`; `count=12`, `min=o(-2.5)`, `max=o(5.0)`; `source_id=7`, `next_sequence=12`; occurrences `(1, u64::MAX, o(3.0))`, `(0x0123456789abcdef, 0, o(0.0))`, `(0xfedcba9876543210, 0x42, o(-2.5))`; `o(x)` is the order-preserving `u64` of `x` |
@@ -235,6 +239,15 @@ The CSHeap delta fixture carries the metadata block of
 `csheap_i64_regular_2x4_strkeys` except `key_type`, `"i64"` for its own heap,
 under kind_id `0a 80`. Its cells are the Count Sketch i64 delta's; its heap
 counts span uint32 / negative int8 / int64.
+
+The `space_saving_*`, `cmsspacesaving_*` and `csspacesaving_*` fixtures without
+`nototal` carry the retired kinds `18 00` / `1e 00` / `1f 00`, whose summary
+also holds a `total`; they stay as decode-only fixtures for bytes written before
+the change. The current kinds `18 01` / `1e 01` / `1f 01` drop `total`, so each
+`*_nototal_*` fixture is the same state without it: a decoder reads a retired
+fixture into the same triples and ceiling and re-encodes it as its
+`*_nototal_*` twin. The stream's total weight is not Space-Saving state; a
+separate exact count keeps it.
 
 The CMSSpaceSaving and CSSpaceSaving fixtures set the matrix directly and
 build the summary by weighted inserts, whose triples do not depend on the hash.
